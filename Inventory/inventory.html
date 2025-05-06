@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="inventory.css">
+</head>
+<body>
+    <div class="container-fluid py-3">
+        <h1 class="mb-3">Inventory Management</h1>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="search-container mb-4">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search by Name or Barcode...">
+                </div>
+
+                <h2 class="card-title">Add Product</h2>
+                <div class="form-container">
+                    <div class="input-group">
+                        <label for="name">Name:</label>
+                        <input type="text" id="name" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="barcode">Barcode:</label>
+                        <input type="text" id="barcode" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="gstPercentage">GST %:</label>
+                        <input type="number" id="gstPercentage" min="0" step="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="buyingCost">Buying Cost:</label>
+                        <input type="number" id="buyingCost" min="0" step="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="sellingCost">Selling Cost:</label>
+                        <input type="number" id="sellingCost" min="0" step="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="mrp">MRP:</label>
+                        <input type="number" id="mrp" min="0" step="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="unit">Unit</label>
+                        <select id="unit" class="form-control" style="min-width: 120px; padding: 5px; font-size: 14px; height: 38px;">
+                            <option value="Unit">Unit</option>
+                            <option value="Kg">Kg</option>
+                            <option value="Gram">Gram</option>
+                            <option value="Liter">Liter</option>
+                            <option value="Milli">Milli</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="stock">Stock:</label>
+                        <input type="number" id="stock" min="0" required>
+                    </div>
+                    <button id="actionButton" class="btn btn-primary" onclick="handleAction()">Add Product</button>
+                </div>
+                <div id="barcode-error" style="display:none; color:#e74c3c;">Product with this barcode already exists!</div>
+
+                <h2 class="card-title mt-4">Inventory List</h2>
+                <table id="inventoryTable" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Barcode</th>
+                            <th>GST %</th>
+                            <th>Buying Cost</th>
+                            <th>Selling Cost</th>
+                            <th>MRP</th>
+                            <th>Stock</th>
+                            <th>Unit</th>
+                            <th>Edit</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="inventory.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+.main-content {
+    display: flex;
+    flex-direction: row;
+    height: calc(100vh - 60px); /* Adjust based on sidebar height */
+    overflow: hidden;
+}
+
+.items-section {
+    width: 75%;
+    overflow-y: auto;
+}
+
+.billing-section {
+    width: 25%;
+    background: #f8f9fa;
+    border-left: 1px solid #ced4da;
+    overflow-y: auto;
+}
+
+.search-container {
+    max-width: 400px;
+}
+
+.billing-details p, .payment-details p {
+    font-size: 16px;
+    margin: 5px 0;
+}
+
+.billing-details span, .payment-details span {
+    font-weight: bold;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group label {
+    font-size: 14px;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.input-group input, .input-group select {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table th, .table td {
+    vertical-align: middle;
+    font-size: 14px;
+}
+
+.table input, .table select {
+    width: 100%;
+    padding: 3px;
+    border: 1px solid #ced4da;
+    border-radius: 3px;
+}
+
+#discount, #paymentMethod, #amountPaid {
+    width: 100px;
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+
+    .items-section, .billing-section {
+        width: 100%;
+    }
+
+    .billing-section {
+        border-left: none;
+        border-top: 1px solid #ced4da;
+    }
+}
