@@ -69,13 +69,113 @@
     .main-content {
         flex-direction: column;
     }
-
     .items-section, .billing-section {
         width: 100%;
     }
-
     .billing-section {
         border-left: none;
         border-top: 1px solid #ced4da;
     }
+}
+
+/* Calculator Modal Styles */
+.modal-backdrop {
+    display: none !important; /* Remove background blur */
+}
+
+.modal-dialog {
+    max-width: 350px; /* Smaller modal for better fit */
+}
+
+.modal-content {
+    background: #f5f5e6; /* Light cream with a subtle green tint */
+    border: 1px solid #28a745; /* Green border matching billing theme */
+}
+
+.calculator-buttons {
+    display: grid;
+    gap: 5px; /* Reduced gap for smaller size */
+}
+
+.calculator-history {
+    max-height: 100px; /* Smaller history block */
+    overflow-y: auto;
+}
+
+.calculator-history h5 {
+    font-size: 14px; /* Smaller text */
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+#calcHistory {
+    font-size: 12px; /* Smaller text */
+}
+
+#calcHistory .list-group-item {
+    padding: 5px;
+    background: #e9ecef;
+    border: 1px solid #ced4da;
+    margin-bottom: 2px;
+}
+
+#calcDisplay {
+    font-size: 20px; /* Smaller display */
+    text-align: right;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    background: #fff;
+}
+
+.btn-light, .btn-primary, .btn-secondary, .btn-success, .btn-danger {
+    font-size: 16px; /* Smaller buttons */
+    padding: 8px;
+}
+
+.btn-light {
+    background: #fff;
+    border: 1px solid #ced4da;
+    color: #2c3e50;
+}
+
+.btn-light:hover {
+    background: #e9ecef;
+}
+
+.btn-primary {
+    background: #28a745; /* Green matching billing theme */
+    border: 1px solid #ced4da;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #218838; /* Darker green on hover */
+}
+
+.btn-success {
+    background: #28a745;
+    border: 1px solid #ced4da;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-secondary {
+    background: #007bff; /* Blue shade for secondary buttons */
+    border: 1px solid #ced4da;
+}
+
+.btn-secondary:hover {
+    background: #0056b3; /* Darker blue on hover */
+}
+
+.btn-danger {
+    background: #ff0000; /* Blue shade for close button */
+    border: 1px solid #ced4da;
+}
+
+.btn-danger:hover {
+    background: #0056b3; /* Darker blue on hover */
 }

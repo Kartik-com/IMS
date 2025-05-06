@@ -2,11 +2,52 @@ const { ipcRenderer } = require('electron');
 
 let inventory = [];
 let billItems = [];
+let displayValue = '0';
+let history = [];
+let isHistoryVisible = false;
 
-// Load inventory when the page loads
+// Load inventory and initialize calculator when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     loadInventory();
     document.getElementById('searchInput').addEventListener('keydown', handleSearchEnter);
+    // Add keypress listener for F1 to open calculator modal
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'F1') {
+            event.preventDefault(); // Prevent default F1 behavior (e.g., browser help)
+            const calculatorModal = new bootstrap.Modal(document.getElementById('calculatorModal'), { backdrop: false });
+            calculatorModal.show();
+            updateDisplay();
+        }
+    });
+    // Add numpad support for calculator when modal is open
+    document.addEventListener('keydown', (event) => {
+        const calculatorModal = document.getElementById('calculatorModal');
+        if (calculatorModal.classList.contains('show')) {
+            const key = event.key;
+            if (/^[0-9]$/.test(key)) {
+                appendToDisplay(key);
+            } else if (key === 'Enter' || key === '=') {
+                calculateResult();
+            } else if (key === 'Backspace') {
+                backspace();
+            } else if (key === '.') {
+                appendToDisplay('.');
+            } else if (key === '+') {
+                appendToDisplay('+');
+            } else if (key === '-') {
+                appendToDisplay('-');
+            } else if (key === '*') {
+                appendToDisplay('*');
+            } else if (key === '/') {
+                appendToDisplay('/');
+            } else if (key === '%') {
+                appendToDisplay('%');
+            } else if (key === 'Escape') {
+                clearDisplay();
+            }
+            event.preventDefault();
+        }
+    });
 });
 
 async function loadInventory() {
@@ -21,15 +62,12 @@ async function loadInventory() {
 
 function handleSearchEnter(event) {
     if (event.key !== 'Enter') return;
-
     const searchTerm = event.target.value.trim().toLowerCase();
     if (!searchTerm) return;
-
     const matchedItem = inventory.find(item =>
         item.barcode.toLowerCase() === searchTerm ||
         item.name.toLowerCase() === searchTerm
     );
-
     if (matchedItem) {
         addOrUpdateItem(matchedItem);
         event.target.value = '';
@@ -42,16 +80,12 @@ function handleSearchEnter(event) {
 function addOrUpdateItem(item) {
     console.log(item);
     const existingItem = billItems.find(billItem => billItem.productId === item.id);
-
-    // Calculate total quantity already being billed
     const existingQty = existingItem ? existingItem.quantity : 0;
     const newQty = existingQty + 1;
-
     if (newQty > item.stock) {
         showError(`${item.name} Stock: ${item.stock}`);
         return;
     }
-
     if (existingItem) {
         existingItem.quantity += 1;
     } else {
@@ -63,19 +97,16 @@ function addOrUpdateItem(item) {
             quantity: 1,
             measure: item.unit || 'Unit',
             gstPercentage: item.gstPercentage,
-            stock: item.stock // Optional for safety if needed later
+            stock: item.stock
         });
     }
-
     updateItemsTable();
     calculateTotals();
 }
 
-
 function showError(message) {
     const existingError = document.getElementById('search-error');
     if (existingError) existingError.remove();
-
     const errorDiv = document.createElement('div');
     errorDiv.id = 'search-error';
     errorDiv.textContent = message;
@@ -83,14 +114,12 @@ function showError(message) {
     errorDiv.style.fontSize = '14px';
     errorDiv.style.marginTop = '5px';
     document.querySelector('.search-container').appendChild(errorDiv);
-
     setTimeout(() => errorDiv.remove(), 3000);
 }
 
 function updateItemsTable() {
     const itemsBody = document.getElementById('itemsBody');
     itemsBody.innerHTML = '';
-
     billItems.forEach((item, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -115,28 +144,21 @@ function updateItem(index, field, value) {
     if (field === 'price') {
         billItems[index].price = parseFloat(value) || 0;
     }
-
     if (field === 'quantity') {
         const newQuantity = parseInt(value) || 1;
         const maxStock = billItems[index].stock;
-
         if (newQuantity > maxStock) {
             showError(`${billItems[index].name} Stock limit is ${maxStock}`);
-            // Reset to previous valid quantity
-            updateItemsTable(); // Re-render the table to reset the incorrect input
+            updateItemsTable();
             return;
         }
-
         billItems[index].quantity = newQuantity;
     }
-
     if (field === 'measure') {
         billItems[index].measure = value;
     }
-
     calculateTotals();
 }
-
 
 function removeItem(index) {
     billItems.splice(index, 1);
@@ -147,20 +169,16 @@ function removeItem(index) {
 function calculateTotals() {
     let cost = 0;
     let totalGST = 0;
-
     billItems.forEach(item => {
         const itemCost = item.price * item.quantity;
         cost += itemCost;
         totalGST += itemCost * (item.gstPercentage / 100);
     });
-
     const discount = parseFloat(document.getElementById('discount').value) || 0;
     const totalCost = ((cost - (cost * (discount / 100))) + totalGST);
-
     document.getElementById('cost').textContent = `$${cost.toFixed(2)}`;
     document.getElementById('gst').textContent = `$${totalGST.toFixed(2)}`;
     document.getElementById('totalCost').textContent = `$${totalCost.toFixed(2)}`;
-
     calculateChange();
 }
 
@@ -176,14 +194,12 @@ async function saveAndPrintBill() {
         alert('Please add at least one item to the bill.');
         return;
     }
-
     const totalCost = parseFloat(document.getElementById('totalCost').textContent.replace('$', '')) || 0;
     const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
     if (amountPaid < totalCost) {
         alert('Amount paid cannot be less than total cost.');
         return;
     }
-
     const bill = {
         totalItems: billItems.map(item => ({
             barcode: item.barcode,
@@ -196,22 +212,8 @@ async function saveAndPrintBill() {
         amountPaid: amountPaid,
         change: parseFloat(document.getElementById('change').textContent.replace('$', ''))
     };
-
     try {
-        // Save bill to local DB
         await ipcRenderer.invoke('billing:saveBill', bill);
-
-        // ipcRenderer.send('print-bill', {
-        //     items: billItems,
-        //     cost: parseFloat(document.getElementById('cost').textContent.replace('$', '')),
-        //     discount: bill.discount,
-        //     gst: parseFloat(document.getElementById('gst').textContent.replace('$', '')),
-        //     totalCost: totalCost,
-        //     paymentMethod: bill.paymentMethod,
-        //     amountPaid: bill.amountPaid,
-        //     change: bill.change
-        // });
-
         resetBill();
         alert('Bill saved successfully!');
     } catch (error) {
@@ -228,4 +230,85 @@ function resetBill() {
     document.getElementById('paymentMethod').value = 'Cash';
     updateItemsTable();
     calculateTotals();
+}
+
+// Calculator Functions
+function updateDisplay() {
+    document.getElementById('calcDisplay').value = displayValue;
+}
+
+function updateHistory() {
+    const historyList = document.getElementById('calcHistory');
+    historyList.innerHTML = '';
+    history.slice(-5).reverse().forEach(entry => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.textContent = entry;
+        historyList.appendChild(li);
+    });
+}
+
+function toggleHistory() {
+    isHistoryVisible = !isHistoryVisible;
+    const historyBlock = document.getElementById('calcHistoryBlock');
+    historyBlock.style.display = isHistoryVisible ? 'block' : 'none';
+    if (isHistoryVisible) {
+        updateHistory();
+    }
+}
+
+function clearDisplay() {
+    displayValue = '0';
+    updateDisplay();
+}
+
+function backspace() {
+    if (displayValue.length > 1) {
+        displayValue = displayValue.slice(0, -1);
+    } else {
+        displayValue = '0';
+    }
+    updateDisplay();
+}
+
+function appendToDisplay(value) {
+    const operators = ['+', '-', '*', '/'];
+    // Check if the new value is an operator
+    if (operators.includes(value)) {
+        // If the last character is also an operator, replace it
+        if (operators.includes(displayValue.slice(-1))) {
+            displayValue = displayValue.slice(0, -1) + value;
+        } else {
+            displayValue += value;
+        }
+    } else {
+        if (displayValue === '0' && value !== '.') {
+            displayValue = value;
+        } else {
+            displayValue += value;
+        }
+    }
+    updateDisplay();
+}
+
+function calculateResult() {
+    try {
+        let expression = displayValue;
+        if (expression.includes('%')) {
+            expression = expression.replace(/(\d+)%/g, (match, num) => `(${num}/100)`);
+        }
+        const result = eval(expression).toString();
+        if (result === 'Infinity' || result === 'NaN') {
+            displayValue = 'Error';
+        } else {
+            history.push(`${displayValue} = ${result}`);
+            displayValue = result;
+        }
+    } catch (error) {
+        displayValue = 'Error';
+    }
+    updateDisplay();
+    if (isHistoryVisible) {
+        updateHistory();
+    }
 }
