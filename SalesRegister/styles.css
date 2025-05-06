@@ -1,0 +1,38 @@
+.transaction-card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.transaction-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.transaction-details.show {
+    max-height: 1000px; /* Adjust as needed */
+}
+
+.details-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+}
+
+.details-table th,
+.details-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.details-table th {
+    font-weight: 600;
+    color: #000000;
+}
+
+.details-table tbody tr:nth-child(even) {
+    background-color: #F9FAFB;
+}

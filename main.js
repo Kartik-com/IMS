@@ -32,14 +32,21 @@ function createWindow() {
           {
             label: 'Billing',
             click: () => {
-              if (isLoggedIn) mainWindow.loadFile('billing.html');
+              if (isLoggedIn) mainWindow.loadFile('./Billing/billing.html');
             },
             enabled: isLoggedIn
           },
           {
             label: 'Inventory Management',
             click: () => {
-              if (isLoggedIn) mainWindow.loadFile('inventory.html');
+              if (isLoggedIn) mainWindow.loadFile('./Inventory/inventory.html');
+            },
+            enabled: isLoggedIn
+          },
+          {
+            label: 'Sales register',
+            click: () => {
+              if (isLoggedIn) mainWindow.loadFile('./SalesRegister/index.html');
             },
             enabled: isLoggedIn
           },
