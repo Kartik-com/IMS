@@ -4,10 +4,12 @@ const path = require('path');
 const Database = require('better-sqlite3');
 
 // Create or open the SQLite DB in the user's local app data folder
-const dbPath = path.join(app.getPath('userData'), 'inventory.db');
+// const dbPath = path.join(app.getPath('userData'), 'inventory.db');
+
+const dbPath = path.join(__dirname, 'inventory.db')
 const db = new Database(dbPath);
 
-// Inventory
+// Inventory - items
 
 // Create table if not exists
 db.prepare(`
@@ -72,7 +74,7 @@ db.prepare(`
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
-  
+
   // Save bill
   ipcMain.handle('billing:saveBill', (event, billData) => {
     const insertBillStmt = db.prepare(`INSERT INTO bills (data) VALUES (?)`);
@@ -106,5 +108,4 @@ db.prepare(`
     }
   });
   
-  
-  
+

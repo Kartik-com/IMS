@@ -139,7 +139,7 @@ app.whenReady().then(() => {
   createWindow();
 
   // Load IPC handlers after app is ready
-  require(path.join(__dirname, 'ipcHandlers'));
+  require(path.join(__dirname, 'DB/ipcHandlers'));
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
