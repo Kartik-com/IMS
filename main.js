@@ -27,27 +27,21 @@ function createWindow() {
           }
         },
         {
-          label: 'Dashboard',
-          click: () => {
-            mainWindow.loadFile('dashboard.html');
-          }
-        },
-        {
           label: 'Billing',
           click: () => {
-            mainWindow.loadFile('./Billing/billing.html');
+            mainWindow.loadFile('./Billing/POS/pos.html');
           }
         },
         {
           label: 'Inventory Management',
           click: () => {
-            mainWindow.loadFile('./Inventory/inventory.html');
+            mainWindow.loadFile('./Inventory/InventoryList/inventory.html');
           }
         },
         {
-          label: 'Sales register',
+          label: 'Admin',
           click: () => {
-            mainWindow.loadFile('./SalesRegister/index.html');
+            mainWindow.loadFile('./Admin/Sales/sales.html');
           }
         },
         { type: 'separator' },
