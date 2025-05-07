@@ -1,7 +1,6 @@
 const { ipcRenderer } = require('electron');
 
 let inventory = [];
-<<<<<<< HEAD
 let tabs = [
     {
         id: 'tab-1',
@@ -19,55 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeEventListeners();
     renderTabs();
     switchTab('tab-1');
-=======
-let billItems = [];
-let displayValue = '0';
-let history = [];
-let isHistoryVisible = false;
-
-// Load inventory and initialize calculator when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    loadInventory();
-    document.getElementById('searchInput').addEventListener('keydown', handleSearchEnter);
-    // Add keypress listener for F1 to open calculator modal
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'F1') {
-            event.preventDefault(); // Prevent default F1 behavior (e.g., browser help)
-            const calculatorModal = new bootstrap.Modal(document.getElementById('calculatorModal'), { backdrop: false });
-            calculatorModal.show();
-            updateDisplay();
-        }
-    });
-    // Add numpad support for calculator when modal is open
-    document.addEventListener('keydown', (event) => {
-        const calculatorModal = document.getElementById('calculatorModal');
-        if (calculatorModal.classList.contains('show')) {
-            const key = event.key;
-            if (/^[0-9]$/.test(key)) {
-                appendToDisplay(key);
-            } else if (key === 'Enter' || key === '=') {
-                calculateResult();
-            } else if (key === 'Backspace') {
-                backspace();
-            } else if (key === '.') {
-                appendToDisplay('.');
-            } else if (key === '+') {
-                appendToDisplay('+');
-            } else if (key === '-') {
-                appendToDisplay('-');
-            } else if (key === '*') {
-                appendToDisplay('*');
-            } else if (key === '/') {
-                appendToDisplay('/');
-            } else if (key === '%') {
-                appendToDisplay('%');
-            } else if (key === 'Escape') {
-                clearDisplay();
-            }
-            event.preventDefault();
-        }
-    });
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
 });
 
 async function loadInventory() {
@@ -287,14 +237,9 @@ function handleSearchEnter(event) {
 }
 
 function addOrUpdateItem(item) {
-<<<<<<< HEAD
     const tab = tabs.find(t => t.id === activeTabId);
     const existingItem = tab.billItems.find(billItem => billItem.productId === item.id);
 
-=======
-    console.log(item);
-    const existingItem = billItems.find(billItem => billItem.productId === item.id);
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
     const existingQty = existingItem ? existingItem.quantity : 0;
     const newQty = existingQty + 1;
     if (newQty > item.stock) {
@@ -315,12 +260,8 @@ function addOrUpdateItem(item) {
             stock: item.stock
         });
     }
-<<<<<<< HEAD
 
     updateItemsTable(tab.billItems);
-=======
-    updateItemsTable();
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
     calculateTotals();
 }
 
@@ -367,7 +308,6 @@ function updateItem(index, field, value) {
     }
     if (field === 'quantity') {
         const newQuantity = parseInt(value) || 1;
-<<<<<<< HEAD
         const maxStock = tab.billItems[index].stock;
 
         if (newQuantity > maxStock) {
@@ -377,15 +317,6 @@ function updateItem(index, field, value) {
         }
 
         tab.billItems[index].quantity = newQuantity;
-=======
-        const maxStock = billItems[index].stock;
-        if (newQuantity > maxStock) {
-            showError(`${billItems[index].name} Stock limit is ${maxStock}`);
-            updateItemsTable();
-            return;
-        }
-        billItems[index].quantity = newQuantity;
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
     }
     if (field === 'measure') {
         tab.billItems[index].measure = value;
@@ -404,12 +335,8 @@ function calculateTotals() {
     const tab = tabs.find(t => t.id === activeTabId);
     let cost = 0;
     let totalGST = 0;
-<<<<<<< HEAD
 
     tab.billItems.forEach(item => {
-=======
-    billItems.forEach(item => {
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
         const itemCost = item.price * item.quantity;
         cost += itemCost;
         totalGST += itemCost * (item.gstPercentage / 100);
@@ -417,17 +344,11 @@ function calculateTotals() {
     const discount = parseFloat(document.getElementById('discount').value) || 0;
     tab.discount = discount;
     const totalCost = ((cost - (cost * (discount / 100))) + totalGST);
-<<<<<<< HEAD
 
     document.getElementById('cost').textContent = `₹${cost.toFixed(2)}`;
     document.getElementById('gst').textContent = `₹${totalGST.toFixed(2)}`;
     document.getElementById('totalCost').textContent = `₹${totalCost.toFixed(2)}`;
 
-=======
-    document.getElementById('cost').textContent = `$${cost.toFixed(2)}`;
-    document.getElementById('gst').textContent = `$${totalGST.toFixed(2)}`;
-    document.getElementById('totalCost').textContent = `$${totalCost.toFixed(2)}`;
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
     calculateChange();
 }
 
@@ -446,12 +367,8 @@ async function saveAndPrintBill() {
         alert('Please add at least one item to the bill.');
         return;
     }
-<<<<<<< HEAD
 
     const totalCost = parseFloat(document.getElementById('totalCost').textContent.replace('₹', '')) || 0;
-=======
-    const totalCost = parseFloat(document.getElementById('totalCost').textContent.replace('$', '')) || 0;
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
     const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
     if (amountPaid < totalCost) {
         alert('Amount paid cannot be less than total cost.');
@@ -483,101 +400,10 @@ async function saveAndPrintBill() {
 }
 
 function resetBill() {
-<<<<<<< HEAD
     const tab = tabs.find(t => t.id === activeTabId);
     tab.billItems = [];
     tab.discount = 0;
     tab.amountPaid = 0;
     tab.paymentMethod = 'Cash';
     updateUI(tab);
-=======
-    billItems = [];
-    document.getElementById('searchInput').value = '';
-    document.getElementById('discount').value = '0';
-    document.getElementById('amountPaid').value = '0';
-    document.getElementById('paymentMethod').value = 'Cash';
-    updateItemsTable();
-    calculateTotals();
-}
-
-// Calculator Functions
-function updateDisplay() {
-    document.getElementById('calcDisplay').value = displayValue;
-}
-
-function updateHistory() {
-    const historyList = document.getElementById('calcHistory');
-    historyList.innerHTML = '';
-    history.slice(-5).reverse().forEach(entry => {
-        const li = document.createElement('li');
-        li.className = 'list-group-item';
-        li.textContent = entry;
-        historyList.appendChild(li);
-    });
-}
-
-function toggleHistory() {
-    isHistoryVisible = !isHistoryVisible;
-    const historyBlock = document.getElementById('calcHistoryBlock');
-    historyBlock.style.display = isHistoryVisible ? 'block' : 'none';
-    if (isHistoryVisible) {
-        updateHistory();
-    }
-}
-
-function clearDisplay() {
-    displayValue = '0';
-    updateDisplay();
-}
-
-function backspace() {
-    if (displayValue.length > 1) {
-        displayValue = displayValue.slice(0, -1);
-    } else {
-        displayValue = '0';
-    }
-    updateDisplay();
-}
-
-function appendToDisplay(value) {
-    const operators = ['+', '-', '*', '/'];
-    // Check if the new value is an operator
-    if (operators.includes(value)) {
-        // If the last character is also an operator, replace it
-        if (operators.includes(displayValue.slice(-1))) {
-            displayValue = displayValue.slice(0, -1) + value;
-        } else {
-            displayValue += value;
-        }
-    } else {
-        if (displayValue === '0' && value !== '.') {
-            displayValue = value;
-        } else {
-            displayValue += value;
-        }
-    }
-    updateDisplay();
-}
-
-function calculateResult() {
-    try {
-        let expression = displayValue;
-        if (expression.includes('%')) {
-            expression = expression.replace(/(\d+)%/g, (match, num) => `(${num}/100)`);
-        }
-        const result = eval(expression).toString();
-        if (result === 'Infinity' || result === 'NaN') {
-            displayValue = 'Error';
-        } else {
-            history.push(`${displayValue} = ${result}`);
-            displayValue = result;
-        }
-    } catch (error) {
-        displayValue = 'Error';
-    }
-    updateDisplay();
-    if (isHistoryVisible) {
-        updateHistory();
-    }
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
 }
