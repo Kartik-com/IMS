@@ -9,6 +9,40 @@
     <link rel="stylesheet" href="billing.css">
 </head>
 <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container-fluid">
+            <div class="navbar-nav w-100 justify-content-between">
+                <button class="btn btn-outline-primary nav-btn" data-key="F1" onclick="createNewTab()">
+                    <img src="f1.png" alt="New Tab" class="nav-icon"> F1 - New Tab
+                </button>
+                <button class="btn btn-outline-primary nav-btn" data-key="F2" onclick="navigateTo('billing_history.html')">
+                    <img src="f2.png" alt="Billing History" class="nav-icon"> F2 - Billing History
+                </button>
+                <button class="btn btn-outline-primary nav-btn" data-key="F4" onclick="navigateTo('udhari.html')">
+                    <img src="f4.png" alt="Udhari" class="nav-icon"> F4 - Udhari
+                </button>
+                <button class="btn btn-outline-primary nav-btn" data-key="F5" onclick="navigateTo('customers.html')">
+                    <img src="f5.png" alt="Customers" class="nav-icon"> F5 - Customers
+                </button>
+                <button class="btn btn-outline-primary nav-btn" data-key="F6" onclick="navigateTo('returns.html')">
+                    <img src="f6.png" alt="Return/Refunds" class="nav-icon"> F6 - Return/Refunds
+                </button>
+                <button class="btn btn-outline-success nav-btn" data-key="F7" onclick="saveAndPrintBill()">
+                    <img src="f7.png" alt="Print Bill" class="nav-icon"> F7 - Print Bill
+                </button>
+                <button class="btn btn-outline-danger nav-btn" data-key="F8" onclick="navigateTo('index.html')">
+                    <img src="f8.png" alt="Exit" class="nav-icon"> F8 - Exit
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Tab Navigation -->
+    <div class="tab-container">
+        <div class="tabs" id="tabs"></div>
+    </div>
+
     <div class="main-content d-flex">
         <!-- Left Side: Items (75%) -->
         <div class="items-section col-9 p-3">
@@ -16,7 +50,8 @@
             <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="search-container mb-3">
-                        <input type="text" id="searchInput" class="form-control" placeholder="Search by Barcode or Name..." oninput="searchItems()">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search by Barcode or Name..." autocomplete="off">
+                        <div id="suggestions" class="suggestions"></div>
                     </div>
                     <table id="itemsTable" class="table table-striped">
                         <thead>
@@ -41,13 +76,13 @@
             <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="billing-details">
-                        <p>Cost: <span id="cost">$0.00</span></p>
+                        <p>Cost: <span id="cost">₹0.00</span></p>
                         <div class="input-group mb-2">
                             <label for="discount">Discount:</label>
-                            <input type="number" id="discount" min="0" step="0.01" class="form-control" value="0" oninput="calculateTotals()">
+                            <input type="number" id="discount" min="0" step="0.01" class="form-control" value="0">
                         </div>
-                        <p>GST: <span id="gst">$0.00</span></p>
-                        <p>Total Cost: <span id="totalCost">$0.00</span></p>
+                        <p>GST: <span id="gst">₹0.00</span></p>
+                        <p>Total Cost: <span id="totalCost">₹0.00</span></p>
                     </div>
                     <hr>
                     <h3>Payment Details</h3>
@@ -62,9 +97,9 @@
                         </div>
                         <div class="input-group mb-2">
                             <label for="amountPaid">Amount Paid:</label>
-                            <input type="number" id="amountPaid" min="0" step="0.01" class="form-control" value="0" oninput="calculateChange()">
+                            <input type="number" id="amountPaid" min="0" step="0.01" class="form-control" value="0">
                         </div>
-                        <p>Change to Return: <span id="change">$0.00</span></p>
+                        <p>Change to Return: <span id="change">₹0.00</span></p>
                     </div>
                     <button class="btn btn-success w-100 mt-3" onclick="saveAndPrintBill()">Save & Print Bill</button>
                 </div>

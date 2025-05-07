@@ -13,6 +13,7 @@ async function loadInventory() {
     try {
         const items = await ipcRenderer.invoke('inventory:getItems');
         fullInventory = items;
+        console.log("Items:", items);
         displayInventory(items);
     } catch (error) {
         console.error('Error loading inventory:', error);
@@ -144,35 +145,52 @@ async function updateProduct() {
     const sellingCost = parseFloat(document.getElementById('sellingCost').value);
     const mrp = parseFloat(document.getElementById('mrp').value);
     const stock = parseInt(document.getElementById('stock').value);
-    const unit = document.getElementById('unit').value;
-
+    const unit = document.getElementById('unit').value || 'Unit';
+  
     if (!name || !barcode || isNaN(gstPercentage) || isNaN(buyingCost) || 
         isNaN(sellingCost) || isNaN(mrp) || isNaN(stock) || !unit) {
-        alert('Please fill out all fields correctly.');
-        return;
+      alert('Please fill out all fields correctly.');
+      return;
     }
-
-    const product = {
-        id: editingItemId,
-        name,
-        barcode,
-        gstPercentage,
-        buyingCost,
-        sellingCost,
-        MRP: mrp,
-        stock,
-        unit
-    };
-
+  
+    // Check if barcode is already used by another item
+    const barcodeError = document.getElementById('barcode-error');
     try {
-        await ipcRenderer.invoke('inventory:updateItem', product);
-        resetForm();
-        await loadInventory();
+      const existingItem = await ipcRenderer.invoke('inventory:checkBarcode', barcode);
+      const currentItem = fullInventory.find(item => item.id === editingItemId);
+      if (existingItem && currentItem.barcode !== barcode) {
+        barcodeError.style.display = 'block';
+        return;
+      } else {
+        barcodeError.style.display = 'none';
+      }
     } catch (error) {
-        console.error('Error updating product:', error);
-        alert('Failed to update product: ' + error.message);
+      console.error('Error checking barcode:', error);
+      alert('Failed to check barcode.');
+      return;
     }
-}
+  
+    const product = {
+      id: editingItemId,
+      name,
+      barcode,
+      gstPercentage,
+      buyingCost,
+      sellingCost,
+      MRP: mrp,
+      stock,
+      unit
+    };
+  
+    try {
+      await ipcRenderer.invoke('inventory:updateItem', product);
+      resetForm();
+      await loadInventory();
+    } catch (error) {
+      console.error('Error updating product:', error);
+      alert('Failed to update product: ' + error.message);
+    }
+  }
 
 async function deleteProduct(id) {
     if (confirm('Are you sure you want to delete this product?')) {

@@ -1,22 +1,220 @@
 const { ipcRenderer } = require('electron');
 
 let inventory = [];
-let billItems = [];
+let tabs = [
+    {
+        id: 'tab-1',
+        billItems: [],
+        discount: 0,
+        amountPaid: 0,
+        paymentMethod: 'Cash'
+    }
+];
+let activeTabId = 'tab-1';
+let selectedSuggestionIndex = -1;
 
-// Load inventory when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     loadInventory();
-    document.getElementById('searchInput').addEventListener('keydown', handleSearchEnter);
+    initializeEventListeners();
+    renderTabs();
+    switchTab('tab-1');
 });
 
 async function loadInventory() {
     try {
         inventory = await ipcRenderer.invoke('inventory:getItems');
-        updateItemsTable();
+        const tab = tabs.find(t => t.id === activeTabId);
+        updateItemsTable(tab.billItems);
     } catch (error) {
         console.error('Error loading inventory:', error);
         alert('Failed to load inventory.');
     }
+}
+
+function initializeEventListeners() {
+    document.addEventListener('keydown', (event) => {
+        switch (event.key) {
+            case 'F1':
+                event.preventDefault();
+                createNewTab();
+                break;
+            case 'F2':
+                event.preventDefault();
+                navigateTo('billing_history.html');
+                break;
+            case 'F4':
+                event.preventDefault();
+                navigateTo('udhari.html');
+                break;
+            case 'F5':
+                event.preventDefault();
+                navigateTo('customers.html');
+                break;
+            case 'F6':
+                event.preventDefault();
+                navigateTo('returns.html');
+                break;
+            case 'F7':
+                event.preventDefault();
+                saveAndPrintBill();
+                break;
+            case 'F8':
+                event.preventDefault();
+                navigateTo('index.html');
+                break;
+        }
+    });
+
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('keydown', handleSearchEnter);
+    searchInput.addEventListener('input', showSuggestions);
+    searchInput.addEventListener('keydown', handleSuggestionNavigation);
+    searchInput.addEventListener('blur', () => {
+        setTimeout(() => hideSuggestions(), 200); // Delay to allow click
+    });
+}
+
+function navigateTo(page) {
+    ipcRenderer.send('navigate-to', page);
+}
+
+function showSuggestions(event) {
+    const query = event.target.value.trim().toLowerCase();
+    const suggestionsContainer = document.getElementById('suggestions');
+    suggestionsContainer.innerHTML = '';
+
+    if (!query) {
+        suggestionsContainer.style.display = 'none';
+        return;
+    }
+
+    const matches = inventory.filter(item =>
+        item.barcode.toLowerCase().includes(query) ||
+        item.name.toLowerCase().includes(query)
+    );
+
+    if (matches.length === 0) {
+        suggestionsContainer.style.display = 'none';
+        return;
+    }
+
+    matches.forEach((item, index) => {
+        const suggestion = document.createElement('div');
+        suggestion.className = 'suggestion-item';
+        suggestion.textContent = `${item.name} (${item.barcode})`;
+        suggestion.dataset.index = index;
+        suggestion.dataset.id = item.id;
+        suggestion.addEventListener('click', () => selectSuggestion(item));
+        suggestionsContainer.appendChild(suggestion);
+    });
+
+    suggestionsContainer.style.display = 'block';
+    selectedSuggestionIndex = -1;
+}
+
+function handleSuggestionNavigation(event) {
+    const suggestionsContainer = document.getElementById('suggestions');
+    const suggestionItems = suggestionsContainer.querySelectorAll('.suggestion-item');
+    const searchInput = document.getElementById('searchInput');
+
+    if (suggestionItems.length === 0) return;
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestionItems.length - 1);
+        updateSuggestionHighlight(suggestionItems);
+        const selectedItem = inventory.find(item => item.id == suggestionItems[selectedSuggestionIndex].dataset.id);
+        searchInput.value = selectedItem.name; // Update input with selected item's name
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
+        updateSuggestionHighlight(suggestionItems);
+        if (selectedSuggestionIndex >= 0) {
+            const selectedItem = inventory.find(item => item.id == suggestionItems[selectedSuggestionIndex].dataset.id);
+            searchInput.value = selectedItem.name; // Update input with selected item's name
+        } else {
+            searchInput.value = searchInput.value; // Retain current input if no suggestion is selected
+        }
+    } else if (event.key === 'Enter' && selectedSuggestionIndex >= 0) {
+        event.preventDefault();
+        const selectedItem = inventory.find(item => item.id == suggestionItems[selectedSuggestionIndex].dataset.id);
+        selectSuggestion(selectedItem);
+    }
+}
+
+function updateSuggestionHighlight(suggestionItems) {
+    suggestionItems.forEach((item, index) => {
+        item.classList.toggle('active', index === selectedSuggestionIndex);
+        if (index === selectedSuggestionIndex) {
+            item.scrollIntoView({ block: 'nearest' });
+        }
+    });
+}
+
+function selectSuggestion(item) {
+    document.getElementById('searchInput').value = '';
+    hideSuggestions();
+    addOrUpdateItem(item);
+}
+
+function hideSuggestions() {
+    const suggestionsContainer = document.getElementById('suggestions');
+    suggestionsContainer.style.display = 'none';
+    selectedSuggestionIndex = -1;
+}
+
+function createNewTab() {
+    const newTabId = `tab-${Date.now()}`;
+    tabs.push({
+        id: newTabId,
+        billItems: [],
+        discount: 0,
+        amountPaid: 0,
+        paymentMethod: 'Cash'
+    });
+    renderTabs();
+    switchTab(newTabId);
+}
+
+function switchTab(tabId) {
+    activeTabId = tabId;
+    renderTabs();
+    const tab = tabs.find(t => t.id === tabId);
+    updateUI(tab);
+}
+
+function closeTab(tabId) {
+    if (tabs.length === 1) return; // Prevent closing the last tab
+    tabs = tabs.filter(t => t.id !== tabId);
+    if (activeTabId === tabId) {
+        switchTab(tabs[0].id);
+    } else {
+        renderTabs();
+    }
+}
+
+function renderTabs() {
+    const tabsContainer = document.getElementById('tabs');
+    tabsContainer.innerHTML = '';
+    tabs.forEach(tab => {
+        const tabElement = document.createElement('div');
+        tabElement.className = `tab ${tab.id === activeTabId ? 'active' : ''}`;
+        tabElement.innerHTML = `
+            Customer ${tabs.indexOf(tab) + 1}
+            ${tabs.length > 1 ? `<i class="fas fa-times tab-close" onclick="closeTab('${tab.id}')"></i>` : ''}
+        `;
+        tabElement.onclick = () => switchTab(tab.id);
+        tabsContainer.appendChild(tabElement);
+    });
+}
+
+function updateUI(tab) {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('discount').value = tab.discount;
+    document.getElementById('amountPaid').value = tab.amountPaid;
+    document.getElementById('paymentMethod').value = tab.paymentMethod;
+    updateItemsTable(tab.billItems);
+    calculateTotals();
 }
 
 function handleSearchEnter(event) {
@@ -33,17 +231,18 @@ function handleSearchEnter(event) {
     if (matchedItem) {
         addOrUpdateItem(matchedItem);
         event.target.value = '';
+        hideSuggestions();
     } else {
         showError('Product not found in inventory!');
         event.target.value = '';
+        hideSuggestions();
     }
 }
 
 function addOrUpdateItem(item) {
-    console.log(item);
-    const existingItem = billItems.find(billItem => billItem.productId === item.id);
+    const tab = tabs.find(t => t.id === activeTabId);
+    const existingItem = tab.billItems.find(billItem => billItem.productId === item.id);
 
-    // Calculate total quantity already being billed
     const existingQty = existingItem ? existingItem.quantity : 0;
     const newQty = existingQty + 1;
 
@@ -55,7 +254,7 @@ function addOrUpdateItem(item) {
     if (existingItem) {
         existingItem.quantity += 1;
     } else {
-        billItems.push({
+        tab.billItems.push({
             productId: item.id,
             barcode: item.barcode,
             name: item.name,
@@ -63,14 +262,13 @@ function addOrUpdateItem(item) {
             quantity: 1,
             measure: item.unit || 'Unit',
             gstPercentage: item.gstPercentage,
-            stock: item.stock // Optional for safety if needed later
+            stock: item.stock
         });
     }
 
-    updateItemsTable();
+    updateItemsTable(tab.billItems);
     calculateTotals();
 }
-
 
 function showError(message) {
     const existingError = document.getElementById('search-error');
@@ -87,7 +285,7 @@ function showError(message) {
     setTimeout(() => errorDiv.remove(), 3000);
 }
 
-function updateItemsTable() {
+function updateItemsTable(billItems) {
     const itemsBody = document.getElementById('itemsBody');
     itemsBody.innerHTML = '';
 
@@ -112,72 +310,77 @@ function updateItemsTable() {
 }
 
 function updateItem(index, field, value) {
+    const tab = tabs.find(t => t.id === activeTabId);
     if (field === 'price') {
-        billItems[index].price = parseFloat(value) || 0;
+        tab.billItems[index].price = parseFloat(value) || 0;
     }
 
     if (field === 'quantity') {
         const newQuantity = parseInt(value) || 1;
-        const maxStock = billItems[index].stock;
+        const maxStock = tab.billItems[index].stock;
 
         if (newQuantity > maxStock) {
-            showError(`${billItems[index].name} Stock limit is ${maxStock}`);
-            // Reset to previous valid quantity
-            updateItemsTable(); // Re-render the table to reset the incorrect input
+            showError(`${tab.billItems[index].name} Stock limit is ${maxStock}`);
+            updateItemsTable(tab.billItems);
             return;
         }
 
-        billItems[index].quantity = newQuantity;
+        tab.billItems[index].quantity = newQuantity;
     }
 
     if (field === 'measure') {
-        billItems[index].measure = value;
+        tab.billItems[index].measure = value;
     }
 
     calculateTotals();
 }
 
-
 function removeItem(index) {
-    billItems.splice(index, 1);
-    updateItemsTable();
+    const tab = tabs.find(t => t.id === activeTabId);
+    tab.billItems.splice(index, 1);
+    updateItemsTable(tab.billItems);
     calculateTotals();
 }
 
 function calculateTotals() {
+    const tab = tabs.find(t => t.id === activeTabId);
     let cost = 0;
     let totalGST = 0;
 
-    billItems.forEach(item => {
+    tab.billItems.forEach(item => {
         const itemCost = item.price * item.quantity;
         cost += itemCost;
         totalGST += itemCost * (item.gstPercentage / 100);
     });
 
     const discount = parseFloat(document.getElementById('discount').value) || 0;
+    tab.discount = discount;
     const totalCost = ((cost - (cost * (discount / 100))) + totalGST);
 
-    document.getElementById('cost').textContent = `$${cost.toFixed(2)}`;
-    document.getElementById('gst').textContent = `$${totalGST.toFixed(2)}`;
-    document.getElementById('totalCost').textContent = `$${totalCost.toFixed(2)}`;
+    document.getElementById('cost').textContent = `₹${cost.toFixed(2)}`;
+    document.getElementById('gst').textContent = `₹${totalGST.toFixed(2)}`;
+    document.getElementById('totalCost').textContent = `₹${totalCost.toFixed(2)}`;
 
     calculateChange();
 }
 
 function calculateChange() {
-    const totalCost = parseFloat(document.getElementById('totalCost').textContent.replace('$', '')) || 0;
+    const tab = tabs.find(t => t.id === activeTabId);
+    const totalCost = parseFloat(document.getElementById('totalCost').textContent.replace('₹', '')) || 0;
     const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
+    tab.amountPaid = amountPaid;
     const change = amountPaid - totalCost;
-    document.getElementById('change').textContent = `$${change.toFixed(2)}`;
+    document.getElementById('change').textContent = `₹${change.toFixed(2)}`;
 }
 
 async function saveAndPrintBill() {
-    if (billItems.length === 0) {
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (tab.billItems.length === 0) {
         alert('Please add at least one item to the bill.');
         return;
     }
 
-    const totalCost = parseFloat(document.getElementById('totalCost').textContent.replace('$', '')) || 0;
+    const totalCost = parseFloat(document.getElementById('totalCost').textContent.replace('₹', '')) || 0;
     const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
     if (amountPaid < totalCost) {
         alert('Amount paid cannot be less than total cost.');
@@ -185,34 +388,24 @@ async function saveAndPrintBill() {
     }
 
     const bill = {
-        totalItems: billItems.map(item => ({
+        totalItems: tab.billItems.map(item => ({
             barcode: item.barcode,
             quantity: item.quantity,
             price: item.price,
             measure: item.measure,
         })),
         paymentMethod: document.getElementById('paymentMethod').value,
-        discount: parseFloat(document.getElementById('discount').value) || 0,
+        discount: tab.discount,
         amountPaid: amountPaid,
-        change: parseFloat(document.getElementById('change').textContent.replace('$', ''))
+        change: parseFloat(document.getElementById('change').textContent.replace('₹', ''))
     };
 
     try {
-        // Save bill to local DB
         await ipcRenderer.invoke('billing:saveBill', bill);
-
-        // ipcRenderer.send('print-bill', {
-        //     items: billItems,
-        //     cost: parseFloat(document.getElementById('cost').textContent.replace('$', '')),
-        //     discount: bill.discount,
-        //     gst: parseFloat(document.getElementById('gst').textContent.replace('$', '')),
-        //     totalCost: totalCost,
-        //     paymentMethod: bill.paymentMethod,
-        //     amountPaid: bill.amountPaid,
-        //     change: bill.change
-        // });
-
         resetBill();
+        if (tabs.length > 1) {
+            closeTab(activeTabId);
+        }
         alert('Bill saved successfully!');
     } catch (error) {
         console.error('Error saving bill:', error);
@@ -221,11 +414,10 @@ async function saveAndPrintBill() {
 }
 
 function resetBill() {
-    billItems = [];
-    document.getElementById('searchInput').value = '';
-    document.getElementById('discount').value = '0';
-    document.getElementById('amountPaid').value = '0';
-    document.getElementById('paymentMethod').value = 'Cash';
-    updateItemsTable();
-    calculateTotals();
+    const tab = tabs.find(t => t.id === activeTabId);
+    tab.billItems = [];
+    tab.discount = 0;
+    tab.amountPaid = 0;
+    tab.paymentMethod = 'Cash';
+    updateUI(tab);
 }

@@ -1,10 +1,10 @@
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 
-let isLoggedIn = false; // Track login state
+let mainWindow;
 
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -13,132 +13,109 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadFile('login.html'); // Load login page by default
+  mainWindow.loadFile('index.html'); 
   // mainWindow.webContents.openDevTools();
 
-  // Function to update menu based on login state
-  function updateMenu() {
-    const menuTemplate = [
-      {
-        label: 'File',
-        submenu: [
-          {
-            label: 'Dashboard',
-            click: () => {
-              if (isLoggedIn) mainWindow.loadFile('dashboard.html');
-            },
-            enabled: isLoggedIn
-          },
-          {
-            label: 'Billing',
-            click: () => {
-              if (isLoggedIn) mainWindow.loadFile('./Billing/billing.html');
-            },
-            enabled: isLoggedIn
-          },
-          {
-            label: 'Inventory Management',
-            click: () => {
-              if (isLoggedIn) mainWindow.loadFile('./Inventory/inventory.html');
-            },
-            enabled: isLoggedIn
-          },
-          {
-            label: 'Sales register',
-            click: () => {
-              if (isLoggedIn) mainWindow.loadFile('./SalesRegister/index.html');
-            },
-            enabled: isLoggedIn
-          },
-          { type: 'separator' },
-          {
-            label: 'Exit',
-            click: () => {
-              app.quit();
-            }
+  const menuTemplate = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Main',
+          click: () => {
+            mainWindow.loadFile('index.html');
           }
-        ]
-      },
-      {
-        label: 'Edit',
-        submenu: [
-          { role: 'undo' },
-          { role: 'redo' },
-          { type: 'separator' },
-          { role: 'cut' },
-          { role: 'copy' },
-          { role: 'paste' },
-          { role: 'delete' },
-          { type: 'separator' },
-          { role: 'selectAll' }
-        ]
-      },
-      {
-        label: 'View',
-        submenu: [
-          { role: 'reload' },
-          { role: 'forceReload' },
-          { role: 'toggleDevTools' },
-          { type: 'separator' },
-          { role: 'resetZoom' },
-          { role: 'zoomIn' },
-          { role: 'zoomOut' },
-          { type: 'separator' },
-          { role: 'togglefullscreen' }
-        ]
-      },
-      {
-        label: 'Window',
-        submenu: [
-          { role: 'minimize' },
-          { role: 'zoom' },
-          { role: 'close' }
-        ]
-      },
-      {
-        label: 'Help',
-        submenu: [
-          {
-            label: 'About',
-            click: () => {
-              alert('Finance Manager v1.0');
-            }
+        },
+        {
+          label: 'Dashboard',
+          click: () => {
+            mainWindow.loadFile('dashboard.html');
           }
-        ]
-      }
-    ];
-
-    const menu = Menu.buildFromTemplate(menuTemplate);
-    Menu.setApplicationMenu(menu);
-  }
-
-  // Update menu initially (disabled on login page)
-  updateMenu();
-
-  // Listen for page navigation and update login state
-  mainWindow.webContents.on('did-finish-load', () => {
-    const currentUrl = mainWindow.webContents.getURL();
-    if (currentUrl.endsWith('login.html')) {
-      isLoggedIn = false;
-    } else {
-      isLoggedIn = true;
+        },
+        {
+          label: 'Billing',
+          click: () => {
+            mainWindow.loadFile('./Billing/billing.html');
+          }
+        },
+        {
+          label: 'Inventory Management',
+          click: () => {
+            mainWindow.loadFile('./Inventory/inventory.html');
+          }
+        },
+        {
+          label: 'Sales register',
+          click: () => {
+            mainWindow.loadFile('./SalesRegister/index.html');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Exit',
+          click: () => {
+            app.quit();
+          }
+        }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'delete' },
+        { type: 'separator' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { role: 'close' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About',
+          click: () => {
+            // Optionally replace with custom about dialog
+            console.log('Finance Manager v1.0');
+          }
+        }
+      ]
     }
-    updateMenu();
-  });
+  ];
+
+  const menu = Menu.buildFromTemplate(menuTemplate);
+  Menu.setApplicationMenu(menu);
 }
-
-// app.whenReady().then(() => {
-//   createWindow();
-
-//   app.on('activate', () => {
-//     if (BrowserWindow.getAllWindows().length === 0) createWindow();
-//   });
-// });
 
 app.whenReady().then(() => {
   createWindow();
 
-  // Load IPC handlers after app is ready
   require(path.join(__dirname, 'DB/ipcHandlers'));
 
   app.on('activate', () => {
@@ -150,15 +127,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// Handle navigation from login to dashboard
-ipcMain.on('navigate-to-dashboard', (event) => {
-  const mainWindow = BrowserWindow.getFocusedWindow();
-  if (mainWindow) {
-    mainWindow.loadFile('dashboard.html');
-  }
+ipcMain.on('navigate-to', (event, page) => {
+  mainWindow.loadFile(page);
 });
 
-// Handle printing from billing page
+// IPC for printing from billing page
 ipcMain.on('print-bill', (event, billData) => {
   const printWindow = new BrowserWindow({ show: false });
   const date = new Date().toLocaleString();

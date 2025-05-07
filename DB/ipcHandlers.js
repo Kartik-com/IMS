@@ -21,7 +21,8 @@ db.prepare(`
     buyingCost REAL,
     sellingCost REAL,
     MRP REAL,
-    stock INTEGER
+    stock INTEGER,
+    unit TEXT NOT NULL
   )
 `).run();
 
@@ -34,7 +35,7 @@ ipcMain.handle('inventory:getItems', () => {
 ipcMain.handle('inventory:addItem', (event, item) => {
   return db.prepare(`
     INSERT INTO items (name, barcode, gstPercentage, buyingCost, sellingCost, MRP, stock, unit)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     item.name, item.barcode, item.gstPercentage, item.buyingCost,
     item.sellingCost, item.MRP, item.stock, item.unit
