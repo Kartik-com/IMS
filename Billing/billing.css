@@ -183,12 +183,8 @@
     .main-content {
         flex-direction: column;
     }
-<<<<<<< HEAD
 
     .items-section {
-=======
-    .items-section, .billing-section {
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
         width: 100%;
     }
     .billing-section {
