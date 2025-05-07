@@ -218,6 +218,8 @@ function createNewTab() {
     });
     renderTabs();
     switchTab(newTabId);
+    // Set focus to search input
+    document.getElementById('searchInput').focus();
 }
 
 function switchTab(tabId) {
@@ -225,6 +227,8 @@ function switchTab(tabId) {
     renderTabs();
     const tab = tabs.find(t => t.id === tabId);
     updateUI(tab);
+    // Set focus to search input
+    document.getElementById('searchInput').focus();
 }
 
 function closeTab(tabId) {

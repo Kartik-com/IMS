@@ -49,8 +49,15 @@ ipcMain.handle('inventory:updateItem', (event, item) => {
     SET name = ?, barcode = ?, gstPercentage = ?, buyingCost = ?, sellingCost = ?, MRP = ?, stock = ?, unit = ?
     WHERE id = ?
   `).run(
-    item.name, item.barcode, item.gstPercentage, item.buyingCost,
-    item.sellingCost, item.MRP, item.stock, item.id, item.unit
+    item.name,
+    item.barcode,
+    item.gstPercentage,
+    item.buyingCost,
+    item.sellingCost,
+    item.MRP,
+    item.stock,
+    item.unit,
+    item.id
   );
 });
 
