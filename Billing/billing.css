@@ -1,24 +1,138 @@
+.navbar {
+    padding: 10px 20px;
+}
+
+.navbar-nav {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.nav-btn {
+    display: flex;
+    align-items: center;
+}
+
+.nav-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+}
+
+.tab-container {
+    display: flex;
+    align-items: center;
+    background: #f8f9fa;
+    border-bottom: 1px solid #ced4da;
+    padding: 5px 10px;
+    margin-top: 56px; /* Adjust for fixed navbar height */
+}
+
+.tabs {
+    display: flex;
+    flex-grow: 1;
+    overflow-x: auto;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    background: #e9ecef;
+    padding: 8px 15px;
+    margin-right: 5px;
+    border-radius: 5px 5px 0 0;
+    cursor: pointer;
+    font-size: 14px;
+    position: relative;
+}
+
+.tab.active {
+    background: #ffffff;
+    font-weight: bold;
+    border: 1px solid #ced4da;
+    border-bottom: none;
+}
+
+.tab-close {
+    margin-left: 10px;
+    font-size: 12px;
+    color: #dc3545;
+}
+
+.tab-close:hover {
+    color: #a71d2a;
+}
+
 .main-content {
     display: flex;
     flex-direction: row;
-    height: calc(100vh - 60px); /* Adjust based on sidebar height */
+    height: calc(100vh - 106px); /* Adjusted for navbar (56px) and tab bar (50px) */
     overflow: hidden;
 }
 
 .items-section {
     width: 75%;
     overflow-y: auto;
+    scrollbar-width: thin; /* For Firefox */
+    scrollbar-color: #ced4da transparent; /* For Firefox */
+}
+
+.items-section::-webkit-scrollbar {
+    width: 4px; /* For Chrome, Safari, Edge */
+}
+
+.items-section::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.items-section::-webkit-scrollbar-thumb {
+    background: #ced4da;
+    border-radius: 2px;
+}
+
+.items-section::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
 }
 
 .billing-section {
     width: 25%;
     background: #f8f9fa;
     border-left: 1px solid #ced4da;
-    overflow-y: auto;
+    position: fixed;
+    right: 0;
+    top: 106px; /* Navbar (56px) + tab container height (50px) */
+    height: calc(100vh - 106px);
+    overflow-y: hidden; /* Disable scrollbar */
 }
 
 .search-container {
     max-width: 400px;
+    position: relative;
+}
+
+.suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.suggestion-item:hover,
+.suggestion-item.active {
+    background: #f8f9fa;
 }
 
 .billing-details p, .payment-details p {
@@ -70,12 +184,31 @@
         flex-direction: column;
     }
 
-    .items-section, .billing-section {
+    .items-section {
         width: 100%;
     }
 
     .billing-section {
+        width: 100%;
+        position: static;
         border-left: none;
         border-top: 1px solid #ced4da;
+        height: auto;
+    }
+
+    .tab-container {
+        flex-wrap: wrap;
+    }
+
+    .tabs {
+        flex-wrap: nowrap;
+    }
+
+    .navbar-nav {
+        flex-direction: column;
+    }
+
+    .navbar-nav .btn {
+        margin-bottom: 5px;
     }
 }
