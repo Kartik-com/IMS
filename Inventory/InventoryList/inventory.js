@@ -31,9 +31,9 @@ function displayInventory(inventory) {
             <td>${item.name}</td>
             <td>${item.barcode}</td>
             <td>${item.gstPercentage.toFixed(2)}%</td>
-            <td>$${item.buyingCost.toFixed(2)}</td>
-            <td>$${item.sellingCost.toFixed(2)}</td>
-            <td>$${item.MRP.toFixed(2)}</td>
+            <td>₹${item.buyingCost.toFixed(2)}</td>
+            <td>₹${item.sellingCost.toFixed(2)}</td>
+            <td>₹${item.MRP.toFixed(2)}</td>
             <td>${item.stock}</td>
             <td>${item.unit || 'Unit'}</td>
             <td>
