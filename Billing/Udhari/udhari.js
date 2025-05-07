@@ -1,144 +1,60 @@
-// Initialize udhari data from localStorage
-let udhariList = JSON.parse(localStorage.getItem("udhariList")) || [];
-let currentUdhariId = null;
-let lastDeletedEntry = null;
+const { ipcRenderer } = require("electron");
 
-// Pre-populate with sample data if empty (simulating billing page input)
-if (udhariList.length === 0) {
-  udhariList = [
-    {
-      id: Date.now() - 1000,
-      customerName: "Amit Sharma",
-      totalAmount: 5000,
-      paidAmount: 2000,
-      remainingAmount: 3000,
-      date: "2025-05-01",
-      status: "Partial",
-      transactions: [
-        {
-          amount: 2000,
-          date: "2025-05-02",
-          time: "14:30:00",
-          note: "Paid via cash",
-        },
-      ],
-    },
-    {
-      id: Date.now() - 2000,
-      customerName: "Priya Singh",
-      totalAmount: 3000,
-      paidAmount: 0,
-      remainingAmount: 3000,
-      date: "2025-04-28",
-      status: "Pending",
-      transactions: [],
-    },
-    {
-      id: Date.now() - 3000,
-      customerName: "Rahul Verma",
-      totalAmount: 10000,
-      paidAmount: 10000,
-      remainingAmount: 0,
-      date: "2025-04-25",
-      status: "Paid",
-      transactions: [
-        {
-          amount: 5000,
-          date: "2025-04-26",
-          time: "10:15:00",
-          note: "Paid via UPI",
-        },
-        {
-          amount: 5000,
-          date: "2025-04-27",
-          time: "11:00:00",
-          note: "Final payment",
-        },
-      ],
-    },
-  ];
-  localStorage.setItem("udhariList", JSON.stringify(udhariList));
-}
+let entries = [];
+let deletedEntry = null;
+let deletedEntryTimeout = null;
 
-// Migrate old data to new format
-udhariList = udhariList.map((item) => {
-  if (!item.hasOwnProperty("totalAmount")) {
-    return {
-      id: item.id || Date.now(),
-      customerName: item.customerName || "Unknown",
-      totalAmount: item.amount || 0,
-      paidAmount: 0,
-      remainingAmount: item.amount || 0,
-      date: item.date || new Date().toISOString().split("T")[0],
-      status: item.status || "Pending",
-      transactions: [],
-    };
-  }
-  if (!item.hasOwnProperty("transactions")) {
-    return { ...item, transactions: [] };
-  }
-  return item;
+document.addEventListener("DOMContentLoaded", () => {
+  loadTheme();
+  loadUdhariEntries();
+  document.getElementById("themeToggle").addEventListener("click", toggleTheme);
 });
 
-// Save migrated data back to localStorage
-localStorage.setItem("udhariList", JSON.stringify(udhariList));
+// Load Udhari entries from the database
+async function loadUdhariEntries() {
+  try {
+    // Reset entries to ensure no stale data
+    entries = [];
+    console.log("Fetching Udhari entries from backend...");
+    const fetchedEntries = await ipcRenderer.invoke("udhari:getEntries");
+    console.log("Fetched entries:", fetchedEntries);
 
-// Set today's date as default in the date filter
-document.getElementById("dateFilter").value = new Date()
-  .toISOString()
-  .split("T")[0];
-
-// Load theme from localStorage
-const savedTheme = localStorage.getItem("theme") || "light";
-if (savedTheme === "dark") {
-  document.body.classList.add("dark-mode");
-  document.getElementById("themeToggle").innerHTML =
-    '<i class="fas fa-sun"></i> Toggle Theme';
-}
-
-// Function to toggle dark mode
-function toggleTheme() {
-  document.body.classList.toggle("dark-mode");
-  const theme = document.body.classList.contains("dark-mode")
-    ? "dark"
-    : "light";
-  localStorage.setItem("theme", theme);
-  const themeToggle = document.getElementById("themeToggle");
-  themeToggle.innerHTML =
-    theme === "dark"
-      ? '<i class="fas fa-sun"></i> Toggle Theme'
-      : '<i class="fas fa-moon"></i> Toggle Theme';
-}
-
-// Function to show toast notification
-function showToast(message, type = "success") {
-  const toast = document.getElementById("toast");
-  const toastMessage = document.getElementById("toastMessage");
-  const undoButton = document.getElementById("undoButton");
-
-  toastMessage.textContent = message;
-  toast.className = `toast ${type}`;
-  toast.style.display = "flex";
-  if (type !== "success" || !undoButton.onclick) {
-    undoButton.style.display = "none";
-  } else {
-    undoButton.style.display = "inline-block";
-  }
-  setTimeout(() => {
-    toast.style.display = "none";
-    if (type === "success") {
-      lastDeletedEntry = null;
+    // Ensure fetchedEntries is an array
+    entries = Array.isArray(fetchedEntries) ? fetchedEntries : [];
+    if (entries.length === 0) {
+      console.log(
+        "No Udhari entries found in backend. Setting summary to zero."
+      );
     }
-  }, 5000);
+
+    updateSummary();
+    applyFilters();
+  } catch (error) {
+    console.error("Error loading Udhari entries:", error);
+    // Ensure entries is empty on error to avoid stale data
+    entries = [];
+    updateSummary(); // Update summary even on error to reflect empty state
+    applyFilters();
+    showToast(`Error loading Udhari entries: ${error.message}`, "error");
+  }
 }
 
-// Function to update summary stats
+// Update summary section
 function updateSummary() {
-  const totalDues = udhariList.reduce((sum, item) => sum + item.totalAmount, 0);
-  const totalPaid = udhariList.reduce((sum, item) => sum + item.paidAmount, 0);
-  const pendingAmount = udhariList.reduce(
-    (sum, item) => sum + item.remainingAmount,
+  console.log("Updating summary with entries:", entries);
+  const totalDues = entries.reduce((sum, entry) => sum + entry.total_amount, 0);
+  const totalPaid = entries.reduce((sum, entry) => sum + entry.paid_amount, 0);
+  const pendingAmount = entries.reduce(
+    (sum, entry) => sum + entry.remaining_amount,
     0
+  );
+
+  console.log(
+    `Calculated - Total Dues: ₹${totalDues.toFixed(
+      2
+    )}, Total Paid: ₹${totalPaid.toFixed(
+      2
+    )}, Pending Amount: ₹${pendingAmount.toFixed(2)}`
   );
 
   document.getElementById("totalDues").textContent = `₹${totalDues.toFixed(2)}`;
@@ -148,202 +64,268 @@ function updateSummary() {
   ).textContent = `₹${pendingAmount.toFixed(2)}`;
 }
 
-// Function to save udhari data to localStorage
-function saveUdhari() {
-  localStorage.setItem("udhariList", JSON.stringify(udhariList));
-  applyFilters();
-  updateSummary();
+// Apply filters and render the table
+function applyFilters() {
+  const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+  const dateFilter = document.getElementById("dateFilter").value;
+  const statusFilter = document.getElementById("statusFilter").value;
+
+  let filteredEntries = entries.filter((entry) => {
+    const matchesSearch = entry.customer_name
+      .toLowerCase()
+      .includes(searchTerm);
+    const matchesDate = dateFilter ? entry.date === dateFilter : true;
+    const matchesStatus =
+      statusFilter === "all" ||
+      entry.status.toLowerCase() === statusFilter.toLowerCase();
+    return matchesSearch && matchesDate && matchesStatus;
+  });
+
+  applySort(filteredEntries);
 }
 
-// Function to sort the udhari list
-function sortUdhariList(list, sortOption) {
-  const sortedList = [...list];
+// Apply sorting and render the table
+function applySort(filteredEntries = entries) {
+  const sortOption = document.getElementById("sortOption").value;
+  let sortedEntries = [...filteredEntries];
+
   switch (sortOption) {
     case "totalAsc":
-      sortedList.sort((a, b) => a.totalAmount - b.totalAmount);
+      sortedEntries.sort((a, b) => a.total_amount - b.total_amount);
       break;
     case "totalDesc":
-      sortedList.sort((a, b) => b.totalAmount - a.totalAmount);
+      sortedEntries.sort((a, b) => b.total_amount - a.total_amount);
       break;
     case "remainingAsc":
-      sortedList.sort((a, b) => a.remainingAmount - b.remainingAmount);
+      sortedEntries.sort((a, b) => a.remaining_amount - b.remaining_amount);
       break;
     case "remainingDesc":
-      sortedList.sort((a, b) => b.remainingAmount - a.remainingAmount);
+      sortedEntries.sort((a, b) => b.remaining_amount - a.remaining_amount);
       break;
     case "dateAsc":
-      sortedList.sort((a, b) => new Date(a.date) - new Date(b.date));
+      sortedEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
       break;
     case "dateDesc":
-      sortedList.sort((a, b) => new Date(b.date) - new Date(a.date));
+      sortedEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
       break;
     case "nameAsc":
-      sortedList.sort((a, b) => a.customerName.localeCompare(b.customerName));
+      sortedEntries.sort((a, b) =>
+        a.customer_name.localeCompare(b.customer_name)
+      );
       break;
     case "nameDesc":
-      sortedList.sort((a, b) => b.customerName.localeCompare(a.customerName));
+      sortedEntries.sort((a, b) =>
+        b.customer_name.localeCompare(a.customer_name)
+      );
       break;
     case "statusAsc":
-      sortedList.sort((a, b) => a.status.localeCompare(b.status));
+      sortedEntries.sort((a, b) => a.status.localeCompare(b.status));
       break;
     case "statusDesc":
-      sortedList.sort((a, b) => b.status.localeCompare(a.status));
-      break;
-    default:
+      sortedEntries.sort((a, b) => b.status.localeCompare(a.status));
       break;
   }
-  return sortedList;
+
+  renderTable(sortedEntries);
 }
 
-// Function to apply sorting
-function applySort() {
-  applyFilters(); // Re-apply filters and sort
+// Render the Udhari table
+function renderTable(entriesToRender) {
+  const tbody = document.getElementById("udhariTableBody");
+  tbody.innerHTML = "";
+
+  entriesToRender.forEach((entry) => {
+    const row = document.createElement("tr");
+    if (entry.status.toLowerCase() === "settled") {
+      row.classList.add("settled-row");
+    }
+    row.innerHTML = `
+      <td>${entry.customer_name}</td>
+      <td>₹${entry.total_amount.toFixed(2)}</td>
+      <td>₹${entry.paid_amount.toFixed(2)}</td>
+      <td>₹${entry.remaining_amount.toFixed(2)}</td>
+      <td>${entry.date}</td>
+      <td>
+        <button class="action-btn secondary" onclick='viewHistory(${JSON.stringify(
+          entry
+        )})'>
+          <i class="fas fa-history"></i> View
+          <span class="tooltip">View Transaction History</span>
+        </button>
+      </td>
+      <td class="status-${entry.status.toLowerCase()}">${entry.status}</td>
+      <td class="actions-cell">
+        <button class="action-btn success" onclick='openPaymentModal(${JSON.stringify(
+          entry
+        )})'>
+          <i class="fas fa-money-bill-wave"></i> Pay
+          <span class="tooltip">Record Payment</span>
+        </button>
+        <button class="action-btn warning" onclick='settleEntry(${JSON.stringify(
+          entry
+        )})'>
+          <i class="fas fa-check-circle"></i> Settle
+          <span class="tooltip">Mark as Settled</span>
+        </button>
+        <button class="action-btn danger" onclick='deleteEntry(${JSON.stringify(
+          entry
+        )})'>
+          <i class="fas fa-trash-alt"></i> Delete
+          <span class="tooltip">Delete Entry</span>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
 }
 
-// Function to open the payment modal
-function openPaymentModal(id) {
-  currentUdhariId = id;
-  const modal = document.getElementById("paymentModal");
-  const paymentInput = document.getElementById("paymentAmount");
-  paymentInput.value = "";
+// Open payment modal for partial payment
+function openPaymentModal(entry) {
+  currentEntry = entry;
+  document.getElementById("paymentAmount").value = "";
   document.getElementById("paymentNote").value = "";
-  modal.style.display = "flex";
-  paymentInput.focus();
+  document.getElementById("paymentModal").style.display = "flex";
 }
 
-// Function to close a modal
-function closeModal(modalId) {
-  document.getElementById(modalId).style.display = "none";
-  if (modalId === "paymentModal") {
-    currentUdhariId = null;
-  }
-}
-
-// Function to submit a partial payment
+// Submit a partial payment
 function submitPayment() {
-  const paymentAmount = parseFloat(
-    document.getElementById("paymentAmount").value
-  );
-  const paymentNote = document.getElementById("paymentNote").value.trim();
-  const udhari = udhariList.find((item) => item.id === currentUdhariId);
+  const amount =
+    parseFloat(document.getElementById("paymentAmount").value) || 0;
+  const note = document.getElementById("paymentNote").value.trim();
+  const entry = currentEntry;
 
-  if (!paymentAmount || paymentAmount <= 0) {
+  if (amount <= 0) {
     showToast("Please enter a valid payment amount.", "error");
     return;
   }
 
-  if (paymentAmount > udhari.remainingAmount) {
-    showToast("Payment amount cannot exceed the remaining balance.", "error");
+  if (amount > entry.remaining_amount) {
+    showToast("Payment amount cannot exceed remaining amount.", "error");
     return;
   }
 
-  // Add transaction to history
-  udhari.transactions.push({
-    amount: paymentAmount,
+  const transaction = {
     date: new Date().toISOString().split("T")[0],
-    time: new Date().toLocaleTimeString("en-IN"),
-    note: paymentNote || "No note",
-  });
+    amount: amount,
+    note: note || "No note",
+  };
 
-  udhari.paidAmount += paymentAmount;
-  udhari.remainingAmount = udhari.totalAmount - udhari.paidAmount;
-  udhari.status = udhari.remainingAmount === 0 ? "Paid" : "Partial";
+  entry.transactions.push(transaction);
+  entry.paid_amount += amount;
+  entry.remaining_amount = entry.total_amount - entry.paid_amount;
+  entry.status =
+    entry.remaining_amount <= 0
+      ? "Paid"
+      : entry.paid_amount > 0
+      ? "Partial"
+      : "Pending";
 
-  saveUdhari();
+  updateEntry(entry);
   closeModal("paymentModal");
-  showToast(
-    `Payment of ₹${paymentAmount.toFixed(2)} recorded for ${
-      udhari.customerName
-    }.`,
-    "success"
-  );
+  showToast("Payment recorded successfully!", "success");
 }
 
-// Function to mark an entry as settled
-function markAsSettled(id) {
-  const udhari = udhariList.find((item) => item.id === id);
-  if (
-    confirm(
-      `Mark the entry for ${udhari.customerName} as settled? It will be visually struck out but retained in the records.`
-    )
-  ) {
-    if (udhari) {
-      udhari.status = "Settled";
-      saveUdhari();
-      showToast(
-        `Entry for ${udhari.customerName} marked as settled.`,
-        "success"
-      );
-    }
-  }
-}
-
-// Function to delete udhari entry with undo option
-function deleteUdhari(id) {
-  const udhari = udhariList.find((item) => item.id === id);
-  if (!udhari) {
-    console.error("Entry not found for deletion:", id);
-    showToast("Entry not found.", "error");
-    return;
-  }
-
-  const confirmationMessage = `Are you sure you want to delete the entry for ${
-    udhari.customerName
-  } (₹${udhari.totalAmount.toFixed(2)})? You can undo this action.`;
-  if (confirm(confirmationMessage)) {
-    const index = udhariList.findIndex((item) => item.id === id);
-    if (index !== -1) {
-      lastDeletedEntry = { entry: { ...udhariList[index] }, index };
-      udhariList.splice(index, 1);
-      saveUdhari();
-
-      // Show toast notification
-      showToast(`Entry for ${udhari.customerName} deleted.`, "success");
-      console.log(`Deleted entry for ${udhari.customerName} with id ${id}`);
-    } else {
-      console.error("Failed to find entry for deletion:", id);
-      showToast("Failed to delete entry.", "error");
-    }
-  }
-}
-
-// Function to undo the last deletion
-function undoDelete() {
-  if (lastDeletedEntry) {
-    udhariList.splice(lastDeletedEntry.index, 0, lastDeletedEntry.entry);
-    saveUdhari();
-    document.getElementById("toast").style.display = "none";
-    lastDeletedEntry = null;
-    showToast("Entry restored.", "success");
-  }
-}
-
-// Function to open transaction history modal
-function openHistoryModal(id) {
-  const udhari = udhariList.find((item) => item.id === id);
+// View transaction history
+function viewHistory(entry) {
   const historyList = document.getElementById("historyList");
   historyList.innerHTML = "";
-
-  if (!udhari.transactions || udhari.transactions.length === 0) {
+  entry.transactions.forEach((tx) => {
     const li = document.createElement("li");
-    li.textContent = "No transactions recorded.";
+    li.textContent = `${tx.date}: ₹${tx.amount.toFixed(2)} (${tx.note})`;
     historyList.appendChild(li);
-  } else {
-    udhari.transactions.forEach((tx) => {
-      const li = document.createElement("li");
-      li.textContent = `Paid ₹${tx.amount.toFixed(2)} on ${tx.date} at ${
-        tx.time
-      } (${tx.note})`;
-      historyList.appendChild(li);
-    });
-  }
-
+  });
   document.getElementById("historyModal").style.display = "flex";
 }
 
-// Function to export udhari list to CSV
+// Mark entry as settled
+function settleEntry(entry) {
+  if (
+    confirm(
+      `Are you sure you want to mark ${entry.customer_name}'s entry as settled?`
+    )
+  ) {
+    entry.status = "Settled";
+    updateEntry(entry);
+    showToast("Entry marked as settled!", "success");
+  }
+}
+
+// Delete an entry with undo option
+function deleteEntry(entry) {
+  deletedEntry = { ...entry };
+  entries = entries.filter((e) => e.id !== entry.id);
+
+  ipcRenderer
+    .invoke("udhari:deleteEntry", entry.id)
+    .then((result) => {
+      if (result.success) {
+        updateSummary();
+        applyFilters();
+        showToast("Entry deleted successfully!", "success", true);
+        deletedEntryTimeout = setTimeout(() => {
+          deletedEntry = null;
+        }, 5000);
+      } else {
+        showToast("Error deleting entry: " + result.error, "error");
+        loadUdhariEntries();
+      }
+    })
+    .catch((error) => {
+      showToast("Error deleting entry: " + error.message, "error");
+      loadUdhariEntries();
+    });
+}
+
+// Undo delete action
+function undoDelete() {
+  if (!deletedEntry) return;
+
+  clearTimeout(deletedEntryTimeout);
+  entries.push(deletedEntry);
+
+  const entryToRestore = { ...deletedEntry };
+  delete entryToRestore.id; // Remove ID to create a new entry
+  ipcRenderer
+    .invoke("udhari:addEntry", entryToRestore)
+    .then((result) => {
+      if (result.success) {
+        loadUdhariEntries();
+        showToast("Entry restored successfully!", "success");
+      } else {
+        showToast("Error restoring entry: " + result.error, "error");
+        loadUdhariEntries();
+      }
+    })
+    .catch((error) => {
+      showToast("Error restoring entry: " + error.message, "error");
+      loadUdhariEntries();
+    });
+
+  deletedEntry = null;
+  document.getElementById("toast").style.display = "none";
+}
+
+// Update an entry in the database
+function updateEntry(entry) {
+  ipcRenderer
+    .invoke("udhari:updateEntry", entry)
+    .then((result) => {
+      if (result.success) {
+        loadUdhariEntries();
+      } else {
+        showToast("Error updating entry: " + result.error, "error");
+        loadUdhariEntries();
+      }
+    })
+    .catch((error) => {
+      showToast("Error updating entry: " + error.message, "error");
+      loadUdhariEntries();
+    });
+}
+
+// Export table to CSV
 function exportToCSV() {
-  if (udhariList.length === 0) {
+  if (entries.length === 0) {
     showToast("No data to export.", "error");
     return;
   }
@@ -355,154 +337,95 @@ function exportToCSV() {
     "Remaining Amount",
     "Date",
     "Status",
-    "Transactions",
   ];
-  const rows = udhariList.map((item) => [
-    `"${item.customerName}"`,
-    item.totalAmount.toFixed(2),
-    item.paidAmount.toFixed(2),
-    item.remainingAmount.toFixed(2),
-    item.date,
-    item.status,
-    item.transactions.length,
+  const rows = entries.map((entry) => [
+    entry.customer_name,
+    entry.total_amount.toFixed(2),
+    entry.paid_amount.toFixed(2),
+    entry.remaining_amount.toFixed(2),
+    entry.date,
+    entry.status,
   ]);
 
-  const csvContent = [
-    headers.join(","),
-    ...rows.map((row) => row.join(",")),
-  ].join("\n");
+  let csvContent = "data:text/csv;charset=utf-8,";
+  csvContent += headers.join(",") + "\n";
+  rows.forEach((row) => {
+    csvContent += row.join(",") + "\n";
+  });
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.setAttribute("href", url);
-  link.setAttribute("download", "udhari_list.csv");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "udhari_export.csv");
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showToast("Exported to CSV successfully.", "success");
 }
 
-// Function to clear all data
+// Clear all data
 function clearAllData() {
   if (
-    confirm(
-      "Are you sure you want to clear all udhari data? This action cannot be undone."
+    !confirm(
+      "Are you sure you want to clear all Udhari data? This action cannot be undone."
     )
-  ) {
-    udhariList = [];
-    saveUdhari();
-    showToast("All data cleared.", "success");
-  }
+  )
+    return;
+
+  ipcRenderer
+    .invoke("udhari:clearAll")
+    .then((result) => {
+      if (result.success) {
+        entries = [];
+        updateSummary();
+        applyFilters();
+        showToast("All data cleared successfully!", "success");
+      } else {
+        showToast("Error clearing data: " + result.error, "error");
+        loadUdhariEntries();
+      }
+    })
+    .catch((error) => {
+      showToast("Error clearing data: " + error.message, "error");
+      loadUdhariEntries();
+    });
 }
 
-// Function to apply all filters and sorting
-function applyFilters() {
-  const searchTerm = document.getElementById("searchInput").value.toLowerCase();
-  const dateFilter = document.getElementById("dateFilter").value;
-  const statusFilter = document.getElementById("statusFilter").value;
-  const sortOption = document.getElementById("sortOption").value;
-
-  let filteredList = [...udhariList];
-
-  // Apply filters
-  if (searchTerm) {
-    filteredList = filteredList.filter((item) =>
-      item.customerName.toLowerCase().includes(searchTerm)
-    );
-  }
-
-  if (dateFilter) {
-    filteredList = filteredList.filter((item) => item.date === dateFilter);
-  }
-
-  if (statusFilter !== "all") {
-    filteredList = filteredList.filter((item) => item.status === statusFilter);
-  }
-
-  // Apply sorting
-  if (sortOption) {
-    filteredList = sortUdhariList(filteredList, sortOption);
-  }
-
-  renderUdhariTable(filteredList);
+// Close modal
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = "none";
 }
 
-// Function to render the udhari table
-function renderUdhariTable(list = udhariList) {
-  const tbody = document.getElementById("udhariTableBody");
-  tbody.innerHTML = "";
+// Show toast notification
+function showToast(message, type, showUndo = false) {
+  const toast = document.getElementById("toast");
+  const toastMessage = document.getElementById("toastMessage");
+  const undoButton = document.getElementById("undoButton");
 
-  list.forEach((item) => {
-    const totalAmount =
-      typeof item.totalAmount === "number" ? item.totalAmount : 0;
-    const paidAmount =
-      typeof item.paidAmount === "number" ? item.paidAmount : 0;
-    const remainingAmount =
-      typeof item.remainingAmount === "number"
-        ? item.remainingAmount
-        : totalAmount;
-    const transactionCount = item.transactions ? item.transactions.length : 0;
+  toast.className = `toast ${type}`;
+  toastMessage.textContent = message;
+  undoButton.style.display = showUndo ? "inline-flex" : "none";
+  toast.style.display = "flex";
 
-    const row = document.createElement("tr");
-    if (item.status === "Settled") {
-      row.classList.add("settled-row");
-    }
-    row.innerHTML = `
-            <td>${item.customerName || "Unknown"}</td>
-            <td>₹${totalAmount.toFixed(2)}</td>
-            <td>₹${paidAmount.toFixed(2)}</td>
-            <td>₹${remainingAmount.toFixed(2)}</td>
-            <td>${new Date(item.date).toLocaleDateString("en-IN")}</td>
-            <td>${transactionCount}</td>
-            <td class="status-${item.status.toLowerCase()}">${item.status}</td>
-            <td class="actions-cell">
-                ${
-                  item.status !== "Paid" && item.status !== "Settled"
-                    ? `<button class="action-btn success" onclick="openPaymentModal(${item.id})">
-                        <i class="fas fa-money-bill"></i> Pay
-                        <span class="tooltip">Record a payment</span>
-                    </button>`
-                    : ""
-                }
-                ${
-                  item.status !== "Settled"
-                    ? `<button class="action-btn secondary" onclick="markAsSettled(${item.id})">
-                        <i class="fas fa-check-circle"></i> Settle
-                        <span class="tooltip">Mark as settled</span>
-                    </button>`
-                    : ""
-                }
-                <button class="action-btn warning" onclick="openHistoryModal(${
-                  item.id
-                })">
-                    <i class="fas fa-history"></i> History
-                    <span class="tooltip">View transaction history</span>
-                </button>
-                <button class="action-btn danger" onclick="deleteUdhari(${
-                  item.id
-                })">
-                    <i class="fas fa-trash"></i> Delete
-                    <span class="tooltip">Delete this entry</span>
-                </button>
-            </td>
-        `;
-    tbody.appendChild(row);
-  });
+  setTimeout(() => {
+    toast.style.display = "none";
+  }, 5000);
 }
 
-// Close modal when clicking outside
-window.onclick = function (event) {
-  const paymentModal = document.getElementById("paymentModal");
-  const historyModal = document.getElementById("historyModal");
-  if (event.target === paymentModal) {
-    closeModal("paymentModal");
-  }
-  if (event.target === historyModal) {
-    closeModal("historyModal");
-  }
-};
+// Theme toggle functionality
+function toggleTheme() {
+  document.body.classList.toggle("dark-mode");
+  const isDarkMode = document.body.classList.contains("dark-mode");
+  localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+  const themeIcon = document.getElementById("themeToggle").querySelector("i");
+  themeIcon.className = isDarkMode ? "fas fa-sun" : "fas fa-moon";
+}
 
-// Initial render and summary update
-applyFilters();
-updateSummary();
+// Load theme from localStorage
+function loadTheme() {
+  const theme = localStorage.getItem("theme");
+  if (theme === "dark") {
+    document.body.classList.add("dark-mode");
+    document.getElementById("themeToggle").querySelector("i").className =
+      "fas fa-sun";
+  }
+}
