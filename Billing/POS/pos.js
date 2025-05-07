@@ -12,6 +12,9 @@ let tabs = [
 ];
 let activeTabId = 'tab-1';
 let selectedSuggestionIndex = -1;
+let displayValue = '0'; // Initialize displayValue for calculator
+let history = []; // Initialize history array for calculator
+let isHistoryVisible = false; // Initialize history visibility flag
 
 document.addEventListener('DOMContentLoaded', () => {
     loadInventory();
@@ -40,19 +43,25 @@ function initializeEventListeners() {
                 break;
             case 'F2':
                 event.preventDefault();
-                navigateTo('billing_history.html');
+                navigateTo('/Billing/BillingHistory/billingHistory.html');
+                break;
+            case 'F3':
+                event.preventDefault();
+                const calculatorModal = new bootstrap.Modal(document.getElementById('calculatorModal'), { backdrop: false });
+                calculatorModal.show();
+                updateDisplay();
                 break;
             case 'F4':
                 event.preventDefault();
-                navigateTo('udhari.html');
+                navigateTo('/Billing/Udhari/udhari.html');
                 break;
             case 'F5':
                 event.preventDefault();
-                navigateTo('customers.html');
+                navigateTo('/Billing/Customers/customers.html');
                 break;
             case 'F6':
                 event.preventDefault();
-                navigateTo('returns.html');
+                navigateTo('/Billing/Returns/returns.html');
                 break;
             case 'F7':
                 event.preventDefault();
@@ -73,6 +82,41 @@ function initializeEventListeners() {
         setTimeout(() => hideSuggestions(), 200); // Delay to allow click
     });
 }
+
+function openCalculator() {
+    const calculatorModal = new bootstrap.Modal(document.getElementById('calculatorModal'), { backdrop: false });
+    calculatorModal.show();
+    updateDisplay();
+}
+// Add numpad support for calculator when modal is open
+document.addEventListener('keydown', (event) => {
+    const calculatorModal = document.getElementById('calculatorModal');
+    if (calculatorModal.classList.contains('show')) {
+        const key = event.key;
+        if (/^[0-9]$/.test(key)) {
+            appendToDisplay(key);
+        } else if (key === 'Enter' || key === '=') {
+            calculateResult();
+        } else if (key === 'Backspace') {
+            backspace();
+        } else if (key === '.') {
+            appendToDisplay('.');
+        } else if (key === '+') {
+            appendToDisplay('+');
+        } else if (key === '-') {
+            appendToDisplay('-');
+        } else if (key === '*') {
+            appendToDisplay('*');
+        } else if (key === '/') {
+            appendToDisplay('/');
+        } else if (key === '%') {
+            appendToDisplay('%');
+        } else if (key === 'Escape') {
+            clearDisplay();
+        }
+        event.preventDefault();
+    }
+});
 
 function navigateTo(page) {
     ipcRenderer.send('navigate-to', page);
@@ -406,4 +450,91 @@ function resetBill() {
     tab.amountPaid = 0;
     tab.paymentMethod = 'Cash';
     updateUI(tab);
+}
+
+// Calculator Functions
+function updateDisplay() {
+    document.getElementById('calcDisplay').value = displayValue;
+}
+
+function updateHistory() {
+    const historyList = document.getElementById('calcHistory');
+    historyList.innerHTML = '';
+    history.slice(-5).reverse().forEach(entry => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.textContent = entry;
+        historyList.appendChild(li);
+    });
+}
+
+function toggleHistory() {
+    isHistoryVisible = !isHistoryVisible;
+    const historyBlock = document.getElementById('calcHistoryBlock');
+    historyBlock.style.display = isHistoryVisible ? 'block' : 'none';
+    if (isHistoryVisible) {
+        updateHistory();
+    }
+}
+
+function clearDisplay() {
+    displayValue = '0';
+    updateDisplay();
+}
+
+function backspace() {
+    if (displayValue.length > 1) {
+        displayValue = displayValue.slice(0, -1);
+    } else {
+        displayValue = '0';
+    }
+    updateDisplay();
+}
+
+function appendToDisplay(value) {
+    const operators = ['+', '-', '*', '/'];
+    // Check if the new value is an operator
+    if (operators.includes(value)) {
+        // If the last character is also an operator, replace it
+        if (operators.includes(displayValue.slice(-1))) {
+            displayValue = displayValue.slice(0, -1) + value;
+        } else {
+            displayValue += value;
+        }
+    } else {
+        if (displayValue === '0' && value !== '.') {
+            displayValue = value;
+        } else {
+            displayValue += value;
+        }
+    }
+    updateDisplay();
+}
+
+function calculateResult() {
+    try {
+        let expression = displayValue;
+        if (expression.includes('%')) {
+            expression = expression.replace(/(\d+)%/g, (match, num) => `(${num}/100)`);
+        }
+        const result = eval(expression).toString();
+        if (result === 'Infinity' || result === 'NaN') {
+            displayValue = 'Error';
+        } else {
+            history.push(`${displayValue} = ${result}`);
+            displayValue = result;
+        }
+    } catch (error) {
+        displayValue = 'Error';
+    }
+    updateDisplay();
+    if (isHistoryVisible) {
+        updateHistory();
+    }
+    if (displayValue === 'Error') {
+        setTimeout(() => {
+            displayValue = '0';
+            updateDisplay();
+        }, 2000); // Reset display after 2 seconds
+    }
 }
