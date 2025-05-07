@@ -1,65 +1,3 @@
-<<<<<<< HEAD
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: #f3f4f6;
-  }
-  
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 30px;
-    background-color: #f3f4f6;
-    position: absolute;
-    top: 0;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #333;
-  }
-  
-  .logo img {
-    height: 40px;
-  }
-  
-  .settings img {
-    height: 30px;
-    cursor: pointer;
-  }
-  
-  .center-buttons {
-    height: 100vh;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    gap: 30px;
-  }
-  
-  .center-buttons button {
-    padding: 20px 40px;
-    font-size: 1.4rem;
-    background-color: #3498db;
-    color: white;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  
-  .center-buttons button:hover {
-    background-color: #2980b9;
-  }
-  
-=======
 * {
   margin: 0;
   padding: 0;
@@ -668,4 +606,3 @@ body.dark-mode .history-list li {
     gap: 10px;
   }
 }
->>>>>>> 979d643cfb02fa4be3cfb07185f23fcb1bdc8505
