@@ -1,0 +1,100 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+  }
+  
+  .container {
+    max-width: 100%; /* Changed to 100% to use full width */
+    margin: 0 auto;
+    background: #fff;
+    padding: 20px; /* Matches the Inventory interface padding */
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  
+  .search-bar {
+    margin-bottom: 20px;
+  }
+  
+  #searchInput {
+    padding: 10px;
+    width: 300px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  
+  .billing-list {
+    margin-top: 20px;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  
+  th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  th {
+    background-color: #f9f9f9;
+    font-weight: bold;
+  }
+  
+  tr:hover:not(.details-row) {
+    background-color: #f1f1f1;
+    cursor: pointer;
+  }
+  
+  .details-row td {
+    padding: 20px;
+    background-color: #fafafa;
+  }
+  
+  .bill-details h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+  
+  .bill-details h3 {
+    font-size: 18px;
+    margin-top: 20px;
+    margin-bottom: 10px;
+  }
+  
+  .bill-summary {
+    margin-bottom: 20px;
+  }
+  
+  .bill-summary p {
+    margin: 5px 0;
+  }
+  
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .items-table th, .items-table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+  }
+  
+  .items-table th {
+    background-color: #f9f9f9;
+  }
+  
+  .items-table tbody tr:hover {
+    background-color: #f1f1f1;
+  }

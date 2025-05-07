@@ -83,37 +83,40 @@ db.prepare(`
     )
   `).run();
 
-  // Save bill
-  ipcMain.handle('billing:saveBill', (event, billData) => {
-    const insertBillStmt = db.prepare(`INSERT INTO bills (data) VALUES (?)`);
-    const getStockStmt = db.prepare(`SELECT stock FROM items WHERE barcode = ?`);
-    const updateStockStmt = db.prepare(`UPDATE items SET stock = stock - ? WHERE barcode = ?`);
-  
-    const transaction = db.transaction((bill) => {
-      // Check stock for each item before modifying anything
-      for (const item of bill.totalItems) {
-        const row = getStockStmt.get(item.barcode);
-        if (!row) throw new Error(`Item with barcode ${item.barcode} not found`);
-        if (row.stock < item.quantity) {
-          throw new Error(`Insufficient stock for ${item.barcode}. Available: ${row.stock}, Requested: ${item.quantity}`);
-        }
+// Save bill
+ipcMain.handle('billing:saveBill', (event, billData) => {
+  const insertBillStmt = db.prepare(`INSERT INTO bills (data) VALUES (?)`);
+  const getStockStmt = db.prepare(`SELECT stock FROM items WHERE barcode = ?`);
+  const updateStockStmt = db.prepare(`UPDATE items SET stock = stock - ? WHERE barcode = ?`);
+
+  const transaction = db.transaction((bill) => {
+    // Check stock for each item before modifying anything
+    for (const item of bill.totalItems) {
+      const row = getStockStmt.get(item.barcode);
+      if (!row) throw new Error(`Item with barcode ${item.barcode} not found`);
+      if (row.stock < item.quantity) {
+        throw new Error(`Insufficient stock for ${item.barcode}. Available: ${row.stock}, Requested: ${item.quantity}`);
       }
-  
-      // If all items have enough stock, proceed to save bill and update inventory
-      insertBillStmt.run(JSON.stringify(bill));
-  
-      for (const item of bill.totalItems) {
-        updateStockStmt.run(item.quantity, item.barcode);
-      }
-    });
-  
-    try {
-      transaction(billData);
-      return { success: true };
-    } catch (err) {
-      console.error('Billing transaction failed:', err);
-      return { success: false, error: err.message };
+    }
+
+    // If all items have enough stock, proceed to save bill and update inventory
+    insertBillStmt.run(JSON.stringify(bill));
+
+    for (const item of bill.totalItems) {
+      updateStockStmt.run(item.quantity, item.barcode);
     }
   });
-  
 
+  try {
+    transaction(billData);
+    return { success: true };
+  } catch (err) {
+    console.error('Billing transaction failed:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Added handler for fetching all bills for billing history
+ipcMain.handle('billing:getBills', () => {
+  return db.prepare('SELECT * FROM bills').all();
+});

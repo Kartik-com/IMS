@@ -39,6 +39,12 @@ function createWindow() {
           }
         },
         {
+          label: 'Billing History',
+          click: () => {
+            mainWindow.loadFile('./Billing/BillingHistory/billingHistory.html');
+          }
+        },
+        {
           label: 'Admin',
           click: () => {
             mainWindow.loadFile('./Admin/Sales/sales.html');
