@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Udhari Page - Track Customer Dues</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Calibri:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1><i class="fas fa-book"></i> Udhari Book</h1>
+        <button
+          id="themeToggle"
+          class="btn btn-secondary"
+          onclick="toggleTheme()"
+        >
+          <i class="fas fa-moon"></i> Toggle Theme
+        </button>
+      </header>
+
+      <!-- Summary Section -->
+      <section class="summary-section card">
+        <h2>Summary</h2>
+        <div class="summary-stats">
+          <div class="stat">
+            <span>Total Dues</span>
+            <span id="totalDues">₹0.00</span>
+          </div>
+          <div class="stat">
+            <span>Total Paid</span>
+            <span id="totalPaid">₹0.00</span>
+          </div>
+          <div class="stat">
+            <span>Pending Amount</span>
+            <span id="pendingAmount">₹0.00</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Filter and Action Section -->
+      <section class="filter-section card">
+        <div class="filter-group">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search by customer name..."
+            onkeyup="applyFilters()"
+          />
+        </div>
+        <div class="filter-group">
+          <input type="date" id="dateFilter" onchange="applyFilters()" />
+        </div>
+        <div class="filter-group">
+          <select id="statusFilter" onchange="applyFilters()">
+            <option value="all">All Statuses</option>
+            <option value="Paid">Completed (Paid)</option>
+            <option value="Pending">Pending</option>
+            <option value="Partial">Partial</option>
+            <option value="Settled">Settled</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <select id="sortOption" onchange="applySort()">
+            <option value="">Sort By</option>
+            <option value="totalAsc">Total Amount (Lowest to Highest)</option>
+            <option value="totalDesc">Total Amount (Highest to Lowest)</option>
+            <option value="remainingAsc">
+              Remaining Amount (Lowest to Highest)
+            </option>
+            <option value="remainingDesc">
+              Remaining Amount (Highest to Lowest)
+            </option>
+            <option value="dateAsc">Date (Oldest to Newest)</option>
+            <option value="dateDesc">Date (Newest to Oldest)</option>
+            <option value="nameAsc">Customer Name (A to Z)</option>
+            <option value="nameDesc">Customer Name (Z to A)</option>
+            <option value="statusAsc">Status (A to Z)</option>
+            <option value="statusDesc">Status (Z to A)</option>
+          </select>
+        </div>
+        <div class="action-buttons">
+          <button onclick="exportToCSV()" class="btn btn-secondary">
+            <i class="fas fa-download"></i> Export to CSV
+          </button>
+          <button onclick="clearAllData()" class="btn btn-danger">
+            <i class="fas fa-trash-alt"></i> Clear All Data
+          </button>
+        </div>
+      </section>
+
+      <!-- Udhari Table -->
+      <section class="table-section card">
+        <table class="udhari-table" id="udhariTable">
+          <thead>
+            <tr>
+              <th>Customer Name</th>
+              <th>Total Amount (₹)</th>
+              <th>Paid Amount (₹)</th>
+              <th>Remaining (₹)</th>
+              <th>Date</th>
+              <th>Transactions</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="udhariTableBody"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- Modal for Partial Payment -->
+    <div id="paymentModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeModal('paymentModal')">×</span>
+        <h3>Record Payment</h3>
+        <div class="form-group">
+          <label for="paymentAmount">Amount Paid (₹)</label>
+          <input
+            type="number"
+            id="paymentAmount"
+            placeholder="Enter amount paid"
+            min="0"
+            step="0.01"
+          />
+        </div>
+        <div class="form-group">
+          <label for="paymentNote">Note (Optional)</label>
+          <textarea
+            id="paymentNote"
+            placeholder="E.g., Paid via cash"
+          ></textarea>
+        </div>
+        <button onclick="submitPayment()" class="btn btn-success">
+          Submit Payment
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal for Transaction History -->
+    <div id="historyModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeModal('historyModal')">×</span>
+        <h3>Transaction History</h3>
+        <ul id="historyList" class="history-list"></ul>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+      <span id="toastMessage"></span>
+      <button id="undoButton" class="undo-btn" onclick="undoDelete()">
+        Undo
+      </button>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
