@@ -1,1 +1,37 @@
-<h1>Billing History</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing History</title>
+  <link rel="stylesheet" href="billingHistory.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Billing History</h1>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search by Bill ID...">
+    </div>
+    <div class="billing-list">
+      <table id="billsTable">
+        <thead>
+          <tr>
+            <th>Bill ID</th>
+            <th>Date</th>
+            <th>Customer Name</th>
+            <th>Customer Mobile</th>
+            <th>Total Items</th>
+            <th>Payment Method</th>
+            <th>Discount</th>
+            <th>Total Cost</th>
+            <th>Amount Paid</th>
+            <th>Change</th>
+          </tr>
+        </thead>
+        <tbody id="billsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="billingHistory.js"></script>
+</body>
+</html>
