@@ -25,7 +25,7 @@
     background: #f8f9fa;
     border-bottom: 1px solid #ced4da;
     padding: 5px 10px;
-    margin-top: 56px; /* Adjust for fixed navbar height */
+    margin-top: 56px;
 }
 
 .tabs {
@@ -66,19 +66,19 @@
 .main-content {
     display: flex;
     flex-direction: row;
-    height: calc(100vh - 106px); /* Adjusted for navbar (56px) and tab bar (50px) */
+    height: calc(100vh - 106px);
     overflow: hidden;
 }
 
 .items-section {
-    width: 75%;
+    width: 70%;
     overflow-y: auto;
-    scrollbar-width: thin; /* For Firefox */
-    scrollbar-color: #ced4da transparent; /* For Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #ced4da transparent;
 }
 
 .items-section::-webkit-scrollbar {
-    width: 4px; /* For Chrome, Safari, Edge */
+    width: 4px;
 }
 
 .items-section::-webkit-scrollbar-track {
@@ -95,18 +95,21 @@
 }
 
 .billing-section {
-    width: 25%;
+    width: 30%;
     background: #f8f9fa;
     border-left: 1px solid #ced4da;
     position: fixed;
     right: 0;
-    top: 106px; /* Navbar (56px) + tab container height (50px) */
+    top: 106px;
     height: calc(100vh - 106px);
-    overflow-y: hidden; /* Disable scrollbar */
+    overflow-y: auto;
+}
+
+.customer-search-container {
+    max-width: 300px;
 }
 
 .search-container {
-    max-width: 400px;
     position: relative;
 }
 
@@ -135,13 +138,18 @@
     background: #f8f9fa;
 }
 
-.billing-details p, .payment-details p {
+.billing-details p, .payment-details p, .customer-details p {
     font-size: 16px;
     margin: 5px 0;
 }
 
-.billing-details span, .payment-details span {
+.billing-details span, .payment-details span, .customer-details span {
     font-weight: bold;
+}
+
+.customer-details p {
+    font-size: 14px;
+    margin: 0;
 }
 
 .input-group {
@@ -184,15 +192,21 @@
         flex-direction: column;
     }
 
-    .items-section {
-        width: 100%;
-    }
-    .billing-section {
+    .items-section, .billing-section {
         width: 100%;
         position: static;
         border-left: none;
         border-top: 1px solid #ced4da;
         height: auto;
+    }
+
+    .customer-search-container {
+        max-width: 100%;
+        margin-top: 10px;
+    }
+
+    .customer-details {
+        flex-direction: column;
     }
 
     .tab-container {
@@ -214,36 +228,36 @@
 
 /* Calculator Modal Styles */
 .modal-backdrop {
-    display: none !important; /* Remove background blur */
+    display: none !important;
 }
 
 .modal-dialog {
-    max-width: 350px; /* Smaller modal for better fit */
+    max-width: 350px;
 }
 
 .modal-content {
-    background: #f5f5e6; /* Light cream with a subtle green tint */
-    border: 1px solid #28a745; /* Green border matching billing theme */
+    background: #f5f5e6;
+    border: 1px solid #28a745;
 }
 
 .calculator-buttons {
     display: grid;
-    gap: 5px; /* Reduced gap for smaller size */
+    gap: 5px;
 }
 
 .calculator-history {
-    max-height: 100px; /* Smaller history block */
+    max-height: 100px;
     overflow-y: auto;
 }
 
 .calculator-history h5 {
-    font-size: 14px; /* Smaller text */
+    font-size: 14px;
     color: #2c3e50;
     margin-bottom: 5px;
 }
 
 #calcHistory {
-    font-size: 12px; /* Smaller text */
+    font-size: 12px;
 }
 
 #calcHistory .list-group-item {
@@ -254,7 +268,7 @@
 }
 
 #calcDisplay {
-    font-size: 20px; /* Smaller display */
+    font-size: 20px;
     text-align: right;
     padding: 10px;
     border: 1px solid #ced4da;
@@ -263,7 +277,7 @@
 }
 
 .btn-light, .btn-primary, .btn-secondary, .btn-success, .btn-danger {
-    font-size: 16px; /* Smaller buttons */
+    font-size: 16px;
     padding: 8px;
 }
 
@@ -278,13 +292,13 @@
 }
 
 .btn-primary {
-    background: #28a745; /* Green matching billing theme */
+    background: #28a745;
     border: 1px solid #ced4da;
     color: #fff;
 }
 
 .btn-primary:hover {
-    background: #218838; /* Darker green on hover */
+    background: #218838;
 }
 
 .btn-success {
@@ -297,123 +311,19 @@
 }
 
 .btn-secondary {
-    background: #007bff; /* Blue shade for secondary buttons */
+    background: #007bff;
     border: 1px solid #ced4da;
 }
 
 .btn-secondary:hover {
-    background: #0056b3; /* Darker blue on hover */
+    background: #0056b3;
 }
 
 .btn-danger {
-    background: #ff0000; /* Blue shade for close button */
+    background: #ff0000;
     border: 1px solid #ced4da;
 }
 
 .btn-danger:hover {
-    background: #0056b3; /* Darker blue on hover */
-}
-
-/* calculator */
-
-/* Calculator Modal Styles */
-.modal-backdrop {
-    display: none !important; /* Remove background blur */
-}
-
-.modal-dialog {
-    max-width: 350px; /* Smaller modal for better fit */
-}
-
-.modal-content {
-    background: #f5f5e6; /* Light cream with a subtle green tint */
-    border: 1px solid #28a745; /* Green border matching billing theme */
-}
-
-.calculator-buttons {
-    display: grid;
-    gap: 5px; /* Reduced gap for smaller size */
-}
-
-.calculator-history {
-    max-height: 100px; /* Smaller history block */
-    overflow-y: auto;
-}
-
-.calculator-history h5 {
-    font-size: 14px; /* Smaller text */
-    color: #2c3e50;
-    margin-bottom: 5px;
-}
-
-#calcHistory {
-    font-size: 12px; /* Smaller text */
-}
-
-#calcHistory .list-group-item {
-    padding: 5px;
-    background: #e9ecef;
-    border: 1px solid #ced4da;
-    margin-bottom: 2px;
-}
-
-#calcDisplay {
-    font-size: 20px; /* Smaller display */
-    text-align: right;
-    padding: 10px;
-    border: 1px solid #ced4da;
-    border-radius: 5px;
-    background: #fff;
-}
-
-.btn-light, .btn-primary, .btn-secondary, .btn-success, .btn-danger {
-    font-size: 16px; /* Smaller buttons */
-    padding: 8px;
-}
-
-.btn-light {
-    background: #fff;
-    border: 1px solid #ced4da;
-    color: #2c3e50;
-}
-
-.btn-light:hover {
-    background: #e9ecef;
-}
-
-.btn-primary {
-    background: #28a745; /* Green matching billing theme */
-    border: 1px solid #ced4da;
-    color: #fff;
-}
-
-.btn-primary:hover {
-    background: #218838; /* Darker green on hover */
-}
-
-.btn-success {
-    background: #28a745;
-    border: 1px solid #ced4da;
-}
-
-.btn-success:hover {
-    background: #218838;
-}
-
-.btn-secondary {
-    background: #007bff; /* Blue shade for secondary buttons */
-    border: 1px solid #ced4da;
-}
-
-.btn-secondary:hover {
-    background: #0056b3; /* Darker blue on hover */
-}
-
-.btn-danger {
-    background: #ff0000; /* Blue shade for close button */
-    border: 1px solid #ced4da;
-}
-
-.btn-danger:hover {
-    background: #0056b3; /* Darker blue on hover */
+    background: #cc0000;
 }

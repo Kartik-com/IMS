@@ -1,23 +1,27 @@
 const { ipcRenderer } = require('electron');
 
 let inventory = [];
+let customers = [];
 let tabs = [
     {
         id: 'tab-1',
         billItems: [],
         discount: 0,
         amountPaid: 0,
-        paymentMethod: 'Cash'
+        paymentMethod: 'Cash',
+        customer: null
     }
 ];
 let activeTabId = 'tab-1';
 let selectedSuggestionIndex = -1;
-let displayValue = '0'; // Initialize displayValue for calculator
-let history = []; // Initialize history array for calculator
-let isHistoryVisible = false; // Initialize history visibility flag
+let selectedCustomerSuggestionIndex = -1;
+let displayValue = '0';
+let history = [];
+let isHistoryVisible = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadInventory();
+    loadCustomers();
     initializeEventListeners();
     renderTabs();
     switchTab('tab-1');
@@ -31,6 +35,16 @@ async function loadInventory() {
     } catch (error) {
         console.error('Error loading inventory:', error);
         alert('Failed to load inventory.');
+    }
+}
+
+async function loadCustomers() {
+    try {
+        customers = await ipcRenderer.invoke('customers:getCustomers');
+        updateCustomerUI(tabs.find(t => t.id === activeTabId));
+    } catch (error) {
+        console.error('Error loading customers:', error);
+        alert('Failed to load customers.');
     }
 }
 
@@ -79,8 +93,19 @@ function initializeEventListeners() {
     searchInput.addEventListener('input', showSuggestions);
     searchInput.addEventListener('keydown', handleSuggestionNavigation);
     searchInput.addEventListener('blur', () => {
-        setTimeout(() => hideSuggestions(), 200); // Delay to allow click
+        setTimeout(() => hideSuggestions(), 200);
     });
+
+    const customerSearchInput = document.getElementById('customerSearchInput');
+    customerSearchInput.addEventListener('keydown', handleCustomerSearchEnter);
+    customerSearchInput.addEventListener('input', showCustomerSuggestions);
+    customerSearchInput.addEventListener('keydown', handleCustomerSuggestionNavigation);
+    customerSearchInput.addEventListener('blur', () => {
+        setTimeout(() => hideCustomerSuggestions(), 200);
+    });
+
+    const amountPaidInput = document.getElementById('amountPaid');
+    amountPaidInput.addEventListener('input', calculateChange);
 }
 
 function openCalculator() {
@@ -88,7 +113,7 @@ function openCalculator() {
     calculatorModal.show();
     updateDisplay();
 }
-// Add numpad support for calculator when modal is open
+
 document.addEventListener('keydown', (event) => {
     const calculatorModal = document.getElementById('calculatorModal');
     if (calculatorModal.classList.contains('show')) {
@@ -156,6 +181,41 @@ function showSuggestions(event) {
     selectedSuggestionIndex = -1;
 }
 
+function showCustomerSuggestions(event) {
+    const query = event.target.value.trim().toLowerCase();
+    const suggestionsContainer = document.getElementById('customerSuggestions');
+    suggestionsContainer.innerHTML = '';
+
+    if (!query) {
+        suggestionsContainer.style.display = 'none';
+        return;
+    }
+
+    const matches = customers.filter(customer =>
+        customer.name.toLowerCase().includes(query) ||
+        customer.mobile_number.includes(query) ||
+        customer.id.toString().includes(query)
+    );
+
+    if (matches.length === 0) {
+        suggestionsContainer.style.display = 'none';
+        return;
+    }
+
+    matches.forEach((customer, index) => {
+        const suggestion = document.createElement('div');
+        suggestion.className = 'suggestion-item';
+        suggestion.textContent = `${customer.name} (${customer.mobile_number})`;
+        suggestion.dataset.index = index;
+        suggestion.dataset.id = customer.id;
+        suggestion.addEventListener('click', () => selectCustomerSuggestion(customer));
+        suggestionsContainer.appendChild(suggestion);
+    });
+
+    suggestionsContainer.style.display = 'block';
+    selectedCustomerSuggestionIndex = -1;
+}
+
 function handleSuggestionNavigation(event) {
     const suggestionsContainer = document.getElementById('suggestions');
     const suggestionItems = suggestionsContainer.querySelectorAll('.suggestion-item');
@@ -168,21 +228,51 @@ function handleSuggestionNavigation(event) {
         selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestionItems.length - 1);
         updateSuggestionHighlight(suggestionItems);
         const selectedItem = inventory.find(item => item.id == suggestionItems[selectedSuggestionIndex].dataset.id);
-        searchInput.value = selectedItem.name; // Update input with selected item's name
+        searchInput.value = selectedItem.name;
     } else if (event.key === 'ArrowUp') {
         event.preventDefault();
         selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
         updateSuggestionHighlight(suggestionItems);
         if (selectedSuggestionIndex >= 0) {
             const selectedItem = inventory.find(item => item.id == suggestionItems[selectedSuggestionIndex].dataset.id);
-            searchInput.value = selectedItem.name; // Update input with selected item's name
+            searchInput.value = selectedItem.name;
         } else {
-            searchInput.value = searchInput.value; // Retain current input if no suggestion is selected
+            searchInput.value = searchInput.value;
         }
     } else if (event.key === 'Enter' && selectedSuggestionIndex >= 0) {
         event.preventDefault();
         const selectedItem = inventory.find(item => item.id == suggestionItems[selectedSuggestionIndex].dataset.id);
         selectSuggestion(selectedItem);
+    }
+}
+
+function handleCustomerSuggestionNavigation(event) {
+    const suggestionsContainer = document.getElementById('customerSuggestions');
+    const suggestionItems = suggestionsContainer.querySelectorAll('.suggestion-item');
+    const searchInput = document.getElementById('customerSearchInput');
+
+    if (suggestionItems.length === 0) return;
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        selectedCustomerSuggestionIndex = Math.min(selectedCustomerSuggestionIndex + 1, suggestionItems.length - 1);
+        updateCustomerSuggestionHighlight(suggestionItems);
+        const selectedCustomer = customers.find(customer => customer.id == suggestionItems[selectedCustomerSuggestionIndex].dataset.id);
+        searchInput.value = selectedCustomer.name;
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        selectedCustomerSuggestionIndex = Math.max(selectedCustomerSuggestionIndex - 1, -1);
+        updateCustomerSuggestionHighlight(suggestionItems);
+        if (selectedCustomerSuggestionIndex >= 0) {
+            const selectedCustomer = customers.find(customer => customer.id == suggestionItems[selectedCustomerSuggestionIndex].dataset.id);
+            searchInput.value = selectedCustomer.name;
+        } else {
+            searchInput.value = searchInput.value;
+        }
+    } else if (event.key === 'Enter' && selectedCustomerSuggestionIndex >= 0) {
+        event.preventDefault();
+        const selectedCustomer = customers.find(customer => customer.id == suggestionItems[selectedCustomerSuggestionIndex].dataset.id);
+        selectCustomerSuggestion(selectedCustomer);
     }
 }
 
@@ -195,16 +285,39 @@ function updateSuggestionHighlight(suggestionItems) {
     });
 }
 
+function updateCustomerSuggestionHighlight(suggestionItems) {
+    suggestionItems.forEach((item, index) => {
+        item.classList.toggle('active', index === selectedCustomerSuggestionIndex);
+        if (index === selectedCustomerSuggestionIndex) {
+            item.scrollIntoView({ block: 'nearest' });
+        }
+    });
+}
+
 function selectSuggestion(item) {
     document.getElementById('searchInput').value = '';
     hideSuggestions();
     addOrUpdateItem(item);
 }
 
+function selectCustomerSuggestion(customer) {
+    const tab = tabs.find(t => t.id === activeTabId);
+    tab.customer = customer;
+    document.getElementById('customerSearchInput').value = '';
+    hideCustomerSuggestions();
+    updateCustomerUI(tab);
+}
+
 function hideSuggestions() {
     const suggestionsContainer = document.getElementById('suggestions');
     suggestionsContainer.style.display = 'none';
     selectedSuggestionIndex = -1;
+}
+
+function hideCustomerSuggestions() {
+    const suggestionsContainer = document.getElementById('customerSuggestions');
+    suggestionsContainer.style.display = 'none';
+    selectedCustomerSuggestionIndex = -1;
 }
 
 function createNewTab() {
@@ -214,11 +327,11 @@ function createNewTab() {
         billItems: [],
         discount: 0,
         amountPaid: 0,
-        paymentMethod: 'Cash'
+        paymentMethod: 'Cash',
+        customer: null
     });
     renderTabs();
     switchTab(newTabId);
-    // Set focus to search input
     document.getElementById('searchInput').focus();
 }
 
@@ -227,12 +340,11 @@ function switchTab(tabId) {
     renderTabs();
     const tab = tabs.find(t => t.id === tabId);
     updateUI(tab);
-    // Set focus to search input
     document.getElementById('searchInput').focus();
 }
 
 function closeTab(tabId) {
-    if (tabs.length === 1) return; // Prevent closing the last tab
+    if (tabs.length === 1) return;
     tabs = tabs.filter(t => t.id !== tabId);
     if (activeTabId === tabId) {
         switchTab(tabs[0].id);
@@ -246,9 +358,10 @@ function renderTabs() {
     tabsContainer.innerHTML = '';
     tabs.forEach(tab => {
         const tabElement = document.createElement('div');
+        const customerName = tab.customer ? tab.customer.name : 'Customer';
         tabElement.className = `tab ${tab.id === activeTabId ? 'active' : ''}`;
         tabElement.innerHTML = `
-            Customer ${tabs.indexOf(tab) + 1}
+            ${customerName} ${tabs.indexOf(tab) + 1}
             ${tabs.length > 1 ? `<i class="fas fa-times tab-close" onclick="closeTab('${tab.id}')"></i>` : ''}
         `;
         tabElement.onclick = () => switchTab(tab.id);
@@ -262,7 +375,24 @@ function updateUI(tab) {
     document.getElementById('amountPaid').value = tab.amountPaid;
     document.getElementById('paymentMethod').value = tab.paymentMethod;
     updateItemsTable(tab.billItems);
+    updateCustomerUI(tab);
     calculateTotals();
+}
+
+function updateCustomerUI(tab) {
+    const customerName = document.getElementById('customerName');
+    const customerMobile = document.getElementById('customerMobile');
+    const customerUdhari = document.getElementById('customerUdhari');
+
+    if (tab.customer) {
+        customerName.textContent = tab.customer.name;
+        customerMobile.textContent = tab.customer.mobile_number;
+        customerUdhari.textContent = `₹${tab.customer.udhari.toFixed(2)}`;
+    } else {
+        customerName.textContent = 'Unknown';
+        customerMobile.textContent = '-';
+        customerUdhari.textContent = '₹0.00';
+    }
 }
 
 function handleSearchEnter(event) {
@@ -281,6 +411,29 @@ function handleSearchEnter(event) {
         showError('Product not found in inventory!');
         event.target.value = '';
         hideSuggestions();
+    }
+}
+
+function handleCustomerSearchEnter(event) {
+    if (event.key !== 'Enter') return;
+    const searchTerm = event.target.value.trim().toLowerCase();
+    if (!searchTerm) return;
+    const matchedCustomer = customers.find(customer =>
+        customer.name.toLowerCase() === searchTerm ||
+        customer.mobile_number === searchTerm ||
+        customer.id.toString() === searchTerm
+    );
+    if (matchedCustomer) {
+        const tab = tabs.find(t => t.id === activeTabId);
+        tab.customer = matchedCustomer;
+        event.target.value = '';
+        hideCustomerSuggestions();
+        updateCustomerUI(tab);
+        renderTabs();
+    } else {
+        showError('Customer not found!');
+        event.target.value = '';
+        hideCustomerSuggestions();
     }
 }
 
@@ -423,6 +576,7 @@ async function saveAndPrintBill() {
         return;
     }
     const bill = {
+        customer_id: tab.customer ? tab.customer.id : null,
         totalItems: tab.billItems.map(item => ({
             barcode: item.barcode,
             quantity: item.quantity,
@@ -431,6 +585,7 @@ async function saveAndPrintBill() {
         })),
         paymentMethod: document.getElementById('paymentMethod').value,
         discount: tab.discount,
+        totalCost: totalCost,
         amountPaid: amountPaid,
         change: parseFloat(document.getElementById('change').textContent.replace('₹', ''))
     };
@@ -453,6 +608,7 @@ function resetBill() {
     tab.discount = 0;
     tab.amountPaid = 0;
     tab.paymentMethod = 'Cash';
+    tab.customer = null;
     updateUI(tab);
 }
 
@@ -497,9 +653,7 @@ function backspace() {
 
 function appendToDisplay(value) {
     const operators = ['+', '-', '*', '/'];
-    // Check if the new value is an operator
     if (operators.includes(value)) {
-        // If the last character is also an operator, replace it
         if (operators.includes(displayValue.slice(-1))) {
             displayValue = displayValue.slice(0, -1) + value;
         } else {
@@ -539,6 +693,6 @@ function calculateResult() {
         setTimeout(() => {
             displayValue = '0';
             updateDisplay();
-        }, 2000); // Reset display after 2 seconds
+        }, 2000);
     }
 }

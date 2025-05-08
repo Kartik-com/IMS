@@ -47,9 +47,21 @@
     </div>
 
     <div class="main-content d-flex">
-        <!-- Left Side: Items (75%) -->
-        <div class="items-section col-9 p-3">
-            <h1 class="mb-3">Billing - Items</h1>
+        <!-- Left Side: Items and Customer Search (70%) -->
+        <div class="items-section col-8 p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="mb-0">Billing - Items</h1>
+                <div class="customer-search-container">
+                    <div class="search-container">
+                        <input type="text" id="customerSearchInput" class="form-control" placeholder="Search Customer..." autocomplete="off">
+                        <div id="customerSuggestions" class="suggestions"></div>
+                    </div>
+                    <div class="customer-details d-flex mt-2">
+                        <p class="me-3">Name: <span id="customerName">Unknown</span></p>
+                        <p>Mobile: <span id="customerMobile">-</span></p>
+                    </div>
+                </div>
+            </div>
             <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="search-container mb-3">
@@ -73,8 +85,8 @@
             </div>
         </div>
 
-        <!-- Right Side: Billing (25%) -->
-        <div class="billing-section col-3 p-3">
+        <!-- Right Side: Billing (30%) -->
+        <div class="billing-section col-4 p-3">
             <h2 class="mb-3">Bill Summary</h2>
             <div class="card shadow-sm">
                 <div class="card-body">
@@ -86,6 +98,7 @@
                         </div>
                         <p>GST: <span id="gst">₹0.00</span></p>
                         <p>Total Cost: <span id="totalCost">₹0.00</span></p>
+                        <p>Udhari: <span id="customerUdhari">₹0.00</span></p>
                     </div>
                     <hr>
                     <h3>Payment Details</h3>
@@ -162,58 +175,6 @@
         </div>
     </div>
 
-    
-    <!-- Calculator Modal -->
-    <div class="modal fade" id="calculatorModal" tabindex="-1" aria-labelledby="calculatorModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="calculatorModalLabel">Calculator</h4>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="text" id="calcDisplay" class="form-control mb-3" readonly value="0">
-                    <div class="calculator-buttons">
-                        <div class="row">
-                            <div class="col-3"><button class="btn btn-secondary w-100 mb-2" onclick="clearDisplay()">C</button></div>
-                            <div class="col-3"><button class="btn btn-secondary w-100 mb-2" onclick="backspace()">⌫</button></div>
-                            <div class="col-3"><button class="btn btn-secondary w-100 mb-2" onclick="toggleHistory()">H</button></div>
-                            <div class="col-3"><button class="btn btn-primary w-100 mb-2" onclick="appendToDisplay('/')">/</button></div>
-                        </div>
-                        <div class="row">
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('7')">7</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('8')">8</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('9')">9</button></div>
-                            <div class="col-3"><button class="btn btn-primary w-100 mb-2" onclick="appendToDisplay('')"></button></div>
-                        </div>
-                        <div class="row">
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('4')">4</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('5')">5</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('6')">6</button></div>
-                            <div class="col-3"><button class="btn btn-primary w-100 mb-2" onclick="appendToDisplay('-')">-</button></div>
-                        </div>
-                        <div class="row">
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('1')">1</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('2')">2</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('3')">3</button></div>
-                            <div class="col-3"><button class="btn btn-primary w-100 mb-2" onclick="appendToDisplay('+')">+</button></div>
-                        </div>
-                        <div class="row">
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('0')">0</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('.')">.</button></div>
-                            <div class="col-3"><button class="btn btn-light w-100 mb-2" onclick="appendToDisplay('%')">%</button></div>
-                            <div class="col-3"><button class="btn btn-success w-100 mb-2" onclick="calculateResult()">=</button></div>
-                        </div>
-                        <div id="calcHistoryBlock" class="calculator-history mt-3" style="display: none;">
-                            <h5>History</h5>
-                            <ul id="calcHistory" class="list-group"></ul>
-                        </div>
-                    </div>
-                    <button class="btn btn-danger w-100 mt-3" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="pos.js"></script>
 </body>
