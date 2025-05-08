@@ -1,4 +1,4 @@
-const { ipcMain, app } = require('electron');
+const { ipcMain, app, BrowserWindow } = require('electron');
 const path = require('path');
 const Database = require('better-sqlite3');
 
@@ -6,30 +6,38 @@ const Database = require('better-sqlite3');
 const dbPath = path.join(__dirname, 'inventory.db');
 const db = new Database(dbPath);
 
-// Creating Customers table
+// Create tables
 db.prepare(`
   CREATE TABLE IF NOT EXISTS customers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     mobile_number TEXT UNIQUE NOT NULL,
-    referral INTEGER,
-    udhari REAL DEFAULT 0.0,
-    FOREIGN KEY (referral) REFERENCES customers(id)
+    udhari REAL DEFAULT 0.0
   )
 `).run();
 
-// Creating/Updating Bills table with customer_id
 db.prepare(`
   CREATE TABLE IF NOT EXISTS bills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     customer_id INTEGER,
-    data TEXT NOT NULL,
     createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id) REFERENCES customers(id)
   )
 `).run();
 
-// Inventory - items
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS bill_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bill_id INTEGER,
+    item_id INTEGER,
+    quantity INTEGER NOT NULL,
+    price REAL NOT NULL,
+    total REAL NOT NULL,
+    FOREIGN KEY (bill_id) REFERENCES bills(id),
+    FOREIGN KEY (item_id) REFERENCES items(id)
+  )
+`).run();
+
 db.prepare(`
   CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,125 +52,364 @@ db.prepare(`
   )
 `).run();
 
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS udhari (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    bill_id INTEGER,
+    amount REAL NOT NULL,
+    type TEXT NOT NULL,
+    createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id),
+    FOREIGN KEY (bill_id) REFERENCES bills(id)
+  )
+`).run();
+
+console.log('Database initialized successfully');
+
 // GET customers
 ipcMain.handle('customers:getCustomers', () => {
-  return db.prepare('SELECT * FROM customers').all();
+  try {
+    return db.prepare('SELECT * FROM customers').all();
+  } catch (err) {
+    console.error('Error fetching customers:', err);
+    throw new Error('Failed to fetch customers');
+  }
 });
 
 // ADD customer
 ipcMain.handle('customers:addCustomer', (event, customer) => {
-  return db.prepare(`
-    INSERT INTO customers (name, mobile_number, referral, udhari)
-    VALUES (?, ?, ?, ?)
-  `).run(
-    customer.name,
-    customer.mobile_number,
-    customer.referral || null,
-    customer.udhari || 0.0
-  );
+  try {
+    return db.prepare(`
+      INSERT INTO customers (name, mobile_number, udhari)
+      VALUES (?, ?, ?)
+    `).run(
+      customer.name,
+      customer.mobile_number,
+      customer.udhari || 0.0
+    );
+  } catch (err) {
+    console.error('Error adding customer:', err);
+    throw new Error('Failed to add customer');
+  }
 });
 
 // UPDATE customer
 ipcMain.handle('customers:updateCustomer', (event, customer) => {
-  return db.prepare(`
-    UPDATE customers
-    SET name = ?, mobile_number = ?, referral = ?, udhari = ?
-    WHERE id = ?
-  `).run(
-    customer.name,
-    customer.mobile_number,
-    customer.referral || null,
-    customer.udhari || 0.0,
-    customer.id
-  );
+  try {
+    return db.prepare(`
+      UPDATE customers
+      SET name = ?, mobile_number = ?, udhari = ?
+      WHERE id = ?
+    `).run(
+      customer.name,
+      customer.mobile_number,
+      customer.udhari || 0.0,
+      customer.id
+    );
+  } catch (err) {
+    console.error('Error updating customer:', err);
+    throw new Error('Failed to update customer');
+  }
 });
 
 // DELETE customer
 ipcMain.handle('customers:deleteCustomer', (event, id) => {
-  return db.prepare('DELETE FROM customers WHERE id = ?').run(id);
+  try {
+    return db.prepare('DELETE FROM customers WHERE id = ?').run(id);
+  } catch (err) {
+    console.error('Error deleting customer:', err);
+    throw new Error('Failed to delete customer');
+  }
 });
 
 // CHECK if mobile number exists
 ipcMain.handle('customers:checkMobileNumber', (event, mobile_number) => {
-  const row = db.prepare('SELECT 1 FROM customers WHERE mobile_number = ?').get(mobile_number);
-  return !!row;
+  try {
+    const row = db.prepare('SELECT 1 FROM customers WHERE mobile_number = ?').get(mobile_number);
+    return !!row;
+  } catch (err) {
+    console.error('Error checking mobile number:', err);
+    throw new Error('Failed to check mobile number');
+  }
 });
 
 // GET items
 ipcMain.handle('inventory:getItems', () => {
-  return db.prepare('SELECT * FROM items').all();
+  try {
+    return db.prepare('SELECT * FROM items').all();
+  } catch (err) {
+    console.error('Error fetching items:', err);
+    throw new Error('Failed to fetch items');
+  }
 });
 
 // ADD item
 ipcMain.handle('inventory:addItem', (event, item) => {
-  return db.prepare(`
-    INSERT INTO items (name, barcode, gstPercentage, buyingCost, sellingCost, MRP, stock, unit)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    item.name, item.barcode, item.gstPercentage, item.buyingCost,
-    item.sellingCost, item.MRP, item.stock, item.unit
-  );
+  try {
+    return db.prepare(`
+      INSERT INTO items (name, barcode, gstPercentage, buyingCost, sellingCost, MRP, stock, unit)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      item.name, item.barcode, item.gstPercentage, item.buyingCost,
+      item.sellingCost, item.MRP, item.stock, item.unit
+    );
+  } catch (err) {
+    console.error('Error adding item:', err);
+    throw new Error('Failed to add item');
+  }
 });
 
 // UPDATE item
 ipcMain.handle('inventory:updateItem', (event, item) => {
-  return db.prepare(`
-    UPDATE items
-    SET name = ?, barcode = ?, gstPercentage = ?, buyingCost = ?, sellingCost = ?, MRP = ?, stock = ?, unit = ?
-    WHERE id = ?
-  `).run(
-    item.name,
-    item.barcode,
-    item.gstPercentage,
-    item.buyingCost,
-    item.sellingCost,
-    item.MRP,
-    item.stock,
-    item.unit,
-    item.id
-  );
+  try {
+    return db.prepare(`
+      UPDATE items
+      SET name = ?, barcode = ?, gstPercentage = ?, buyingCost = ?, sellingCost = ?, MRP = ?, stock = ?, unit = ?
+      WHERE id = ?
+    `).run(
+      item.name,
+      item.barcode,
+      item.gstPercentage,
+      item.buyingCost,
+      item.sellingCost,
+      item.MRP,
+      item.stock,
+      item.unit,
+      item.id
+    );
+  } catch (err) {
+    console.error('Error updating item:', err);
+    throw new Error('Failed to update item');
+  }
 });
 
 // DELETE item
 ipcMain.handle('inventory:deleteItem', (event, id) => {
-  return db.prepare('DELETE FROM items WHERE id = ?').run(id);
+  try {
+    return db.prepare('DELETE FROM items WHERE id = ?').run(id);
+  } catch (err) {
+    console.error('Error deleting item:', err);
+    throw new Error('Failed to delete item');
+  }
 });
 
 // CHECK if barcode exists
 ipcMain.handle('inventory:checkBarcode', (event, barcode) => {
-  const row = db.prepare('SELECT 1 FROM items WHERE barcode = ?').get(barcode);
-  return !!row;
+  try {
+    const row = db.prepare('SELECT 1 FROM items WHERE barcode = ?').get(barcode);
+    return !!row;
+  } catch (err) {
+    console.error('Error checking barcode:', err);
+    throw new Error('Failed to check barcode');
+  }
 });
 
-// Save bill
+// Save bill and update udhari
 ipcMain.handle('billing:saveBill', (event, billData) => {
-  const insertBillStmt = db.prepare(`INSERT INTO bills (customer_id, data) VALUES (?, ?)`);
+  const insertBillStmt = db.prepare(`INSERT INTO bills (customer_id) VALUES (?)`);
+  const insertBillItemStmt = db.prepare(`
+    INSERT INTO bill_items (bill_id, item_id, quantity, price, total) 
+    VALUES (?, ?, ?, ?, ?)
+  `);
   const getStockStmt = db.prepare(`SELECT stock FROM items WHERE barcode = ?`);
   const updateStockStmt = db.prepare(`UPDATE items SET stock = stock - ? WHERE barcode = ?`);
+  const insertUdhariStmt = db.prepare(`
+    INSERT INTO udhari (customer_id, bill_id, amount, type) 
+    VALUES (?, ?, ?, ?)
+  `);
 
   const transaction = db.transaction((bill) => {
-    // Check stock for each item before modifying anything
+    // Validate customer for udhari
+    if (bill.isDebt && !bill.customer_id) {
+      throw new Error('Customer ID is required for udhari transactions');
+    }
+
+    // Check stock for each item
     for (const item of bill.totalItems) {
       const row = getStockStmt.get(item.barcode);
-      if (!row) throw new Error(`Item with barcode ${item.barcode} not found`);
+      if (!row) {
+        throw new Error(`Item with barcode ${item.barcode} not found`);
+      }
       if (row.stock < item.quantity) {
         throw new Error(`Insufficient stock for ${item.barcode}. Available: ${row.stock}, Requested: ${item.quantity}`);
       }
     }
 
-    // If all items have enough stock, proceed to save bill and update inventory
-    insertBillStmt.run(bill.customer_id || null, JSON.stringify(bill));
+    // Insert the bill
+    const billId = insertBillStmt.run(bill.customer_id || null).lastInsertRowid;
 
+    // Insert bill items
     for (const item of bill.totalItems) {
+      insertBillItemStmt.run(billId, item.id, item.quantity, item.price, item.total);
       updateStockStmt.run(item.quantity, item.barcode);
+    }
+
+    // Record udhari if debt
+    if (bill.isDebt) {
+      const totalAmount = bill.totalItems.reduce((sum, item) => sum + item.total, 0);
+      insertUdhariStmt.run(bill.customer_id, billId, -totalAmount, 'debt');
+      db.prepare('UPDATE customers SET udhari = udhari + ? WHERE id = ?')
+        .run(-totalAmount, bill.customer_id);
     }
   });
 
   try {
+    console.log('Processing bill:', billData);
     transaction(billData);
+    console.log('Bill saved successfully');
     return { success: true };
   } catch (err) {
-    console.error('Billing transaction failed:', err);
+    console.error('Billing transaction failed:', err.message, err.stack);
+    return { success: false, error: err.message };
+  }
+});
+
+// GET customer summaries
+ipcMain.handle('udhari:getCustomerSummaries', () => {
+  try {
+    const stmt = db.prepare(`
+      SELECT c.id, c.name, c.mobile_number, c.udhari AS total_udhari
+      FROM customers c
+      ORDER BY c.name ASC
+    `);
+    return stmt.all();
+  } catch (err) {
+    console.error('Error fetching customer summaries:', err);
+    throw new Error('Failed to fetch customer summaries');
+  }
+});
+
+// GET udhari entries with customer details
+ipcMain.handle('udhari:getEntries', () => {
+  try {
+    const stmt = db.prepare(`
+      SELECT u.id, u.customer_id, u.bill_id, u.amount, u.type, u.createdAt, c.name AS customer_name, c.udhari AS customer_udhari
+      FROM udhari u
+      JOIN customers c ON u.customer_id = c.id
+      ORDER BY u.createdAt DESC
+    `);
+    return stmt.all();
+  } catch (err) {
+    console.error('Error fetching udhari entries:', err);
+    throw new Error('Failed to fetch udhari entries');
+  }
+});
+
+// GET bill items for a bill
+ipcMain.handle('billing:getBillItems', (event, billId) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT bi.quantity, bi.price, bi.total, i.name
+      FROM bill_items bi
+      JOIN items i ON bi.item_id = i.id
+      WHERE bi.bill_id = ?
+    `);
+    return stmt.all(billId);
+  } catch (err) {
+    console.error('Error fetching bill items:', err);
+    throw new Error('Failed to fetch bill items');
+  }
+});
+
+// ADD udhari repayment
+ipcMain.handle('udhari:addRepayment', (event, repayment) => {
+  const insertStmt = db.prepare(`
+    INSERT INTO udhari (customer_id, bill_id, amount, type, createdAt)
+    VALUES (?, ?, ?, 'repayment', ?)
+  `);
+  const updateCustomerStmt = db.prepare(`
+    UPDATE customers SET udhari = udhari + ? WHERE id = ?
+  `);
+
+  const transaction = db.transaction((repayment) => {
+    insertStmt.run(
+      repayment.customer_id,
+      null,
+      repayment.amount,
+      repayment.createdAt
+    );
+    updateCustomerStmt.run(repayment.amount, repayment.customer_id);
+  });
+
+  try {
+    transaction(repayment);
+    return { success: true };
+  } catch (err) {
+    console.error('Repayment transaction failed:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// RESTORE udhari entry
+ipcMain.handle('udhari:restoreEntry', (event, entry) => {
+  const insertStmt = db.prepare(`
+    INSERT INTO udhari (customer_id, bill_id, amount, type, createdAt)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  const updateCustomerStmt = db.prepare(`
+    UPDATE customers SET udhari = udhari + ? WHERE id = ?
+  `);
+
+  const transaction = db.transaction((entry) => {
+    insertStmt.run(
+      entry.customer_id,
+      entry.bill_id,
+      entry.amount,
+      entry.type,
+      entry.createdAt
+    );
+    updateCustomerStmt.run(entry.amount, entry.customer_id);
+  });
+
+  try {
+    transaction(entry);
+    return { success: true };
+  } catch (err) {
+    console.error('Restore udhari entry failed:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// DELETE udhari entry
+ipcMain.handle('udhari:deleteEntry', (event, id) => {
+  const entry = db.prepare('SELECT * FROM udhari WHERE id = ?').get(id);
+  if (!entry) throw new Error('Udhari entry not found');
+
+  const deleteStmt = db.prepare('DELETE FROM udhari WHERE id = ?');
+  const updateCustomerStmt = db.prepare(`
+    UPDATE customers SET udhari = udhari - ? WHERE id = ?
+  `);
+
+  const transaction = db.transaction(() => {
+    deleteStmt.run(id);
+    updateCustomerStmt.run(entry.amount, entry.customer_id);
+  });
+
+  try {
+    transaction();
+    return { success: true };
+  } catch (err) {
+    console.error('Delete udhari entry failed:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// CLEAR all udhari entries
+ipcMain.handle('udhari:clearAll', () => {
+  const deleteStmt = db.prepare('DELETE FROM udhari');
+  const resetCustomerStmt = db.prepare('UPDATE customers SET udhari = 0');
+
+  const transaction = db.transaction(() => {
+    deleteStmt.run();
+    resetCustomerStmt.run();
+  });
+
+  try {
+    transaction();
+    return { success: true };
+  } catch (err) {
+    console.error('Clear udhari failed:', err);
     return { success: false, error: err.message };
   }
 });

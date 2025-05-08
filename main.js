@@ -9,12 +9,12 @@ function createWindow() {
     height: 800,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
-    }
+      contextIsolation: false,
+      devTools: process.env.NODE_ENV !== 'production', // Disable DevTools in production
+    },
   });
 
-  mainWindow.loadFile('index.html'); 
-  // mainWindow.webContents.openDevTools();
+  mainWindow.loadFile('index.html');
 
   const menuTemplate = [
     {
@@ -24,34 +24,34 @@ function createWindow() {
           label: 'Main',
           click: () => {
             mainWindow.loadFile('index.html');
-          }
+          },
         },
         {
           label: 'Billing',
           click: () => {
             mainWindow.loadFile('./Billing/POS/pos.html');
-          }
+          },
         },
         {
           label: 'Inventory Management',
           click: () => {
             mainWindow.loadFile('./Inventory/InventoryList/inventory.html');
-          }
+          },
         },
         {
           label: 'Admin',
           click: () => {
             mainWindow.loadFile('./Admin/Sales/sales.html');
-          }
+          },
         },
         { type: 'separator' },
         {
           label: 'Exit',
           click: () => {
             app.quit();
-          }
-        }
-      ]
+          },
+        },
+      ],
     },
     {
       label: 'Edit',
@@ -64,8 +64,8 @@ function createWindow() {
         { role: 'paste' },
         { role: 'delete' },
         { type: 'separator' },
-        { role: 'selectAll' }
-      ]
+        { role: 'selectAll' },
+      ],
     },
     {
       label: 'View',
@@ -78,16 +78,16 @@ function createWindow() {
         { role: 'zoomIn' },
         { role: 'zoomOut' },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
+        { role: 'togglefullscreen' },
+      ],
     },
     {
       label: 'Window',
       submenu: [
         { role: 'minimize' },
         { role: 'zoom' },
-        { role: 'close' }
-      ]
+        { role: 'close' },
+      ],
     },
     {
       label: 'Help',
@@ -95,22 +95,28 @@ function createWindow() {
         {
           label: 'About',
           click: () => {
-            // Optionally replace with custom about dialog
             console.log('Finance Manager v1.0');
-          }
-        }
-      ]
-    }
+          },
+        },
+      ],
+    },
   ];
 
   const menu = Menu.buildFromTemplate(menuTemplate);
   Menu.setApplicationMenu(menu);
 }
 
+// Load IPC handlers before creating the window
+require(path.join(__dirname, 'DB/ipcHandlers'));
+
 app.whenReady().then(() => {
   createWindow();
+  console.log('Main process ready');
 
-  require(path.join(__dirname, 'DB/ipcHandlers'));
+  // Send ready signal to renderer
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.send('main-process-ready');
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -148,7 +154,7 @@ ipcMain.on('print-bill', (event, billData) => {
         <tr>
             <td>${item.barcode}</td>
             <td>${item.name}</td>
-            <td>$${item.price.toFixed(2)}</td>
+            <td>₹${item.price.toFixed(2)}</td>
             <td>${item.quantity}</td>
             <td>${item.measure}</td>
         </tr>
@@ -160,13 +166,13 @@ ipcMain.on('print-bill', (event, billData) => {
     <h2>Finance Manager - Bill</h2>
     <p><strong>Date:</strong> ${date}</p>
     ${tableContent}
-    <p><strong>Cost:</strong> $${billData.cost}</p>
-    <p><strong>Discount:</strong> $${billData.discount.toFixed(2)}</p>
-    <p><strong>GST:</strong> $${billData.gst}</p>
-    <p><strong>Total Cost:</strong> $${billData.totalCost}</p>
+    <p><strong>Cost:</strong> ₹${billData.cost}</p>
+    <p><strong>Discount:</strong> ₹${billData.discount.toFixed(2)}</p>
+    <p><strong>GST:</strong> ₹${billData.gst}</p>
+    <p><strong>Total Cost:</strong> ₹${billData.totalCost}</p>
     <p><strong>Payment Method:</strong> ${billData.paymentMethod}</p>
-    <p><strong>Amount Paid:</strong> $${billData.amountPaid.toFixed(2)}</p>
-    <p><strong>Change:</strong> $${billData.change.toFixed(2)}</p>
+    <p><strong>Amount Paid:</strong> ₹${billData.amountPaid.toFixed(2)}</p>
+    <p><strong>Change:</strong> ₹${billData.change.toFixed(2)}</p>
   `;
 
   printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(printContent)}`);
