@@ -6,7 +6,34 @@ const Database = require('better-sqlite3');
 const dbPath = path.join(__dirname, 'inventory.db');
 const db = new Database(dbPath);
 
-// Create tables
+
+
+// Schema migration: Add discount and total_cost columns if they don't exist
+try {
+  db.prepare('ALTER TABLE bills ADD COLUMN discount REAL DEFAULT 0.0').run();
+  console.log('Added discount column to bills table');
+} catch (err) {
+  if (err.code === 'SQLITE_ERROR' && err.message.includes('duplicate column name')) {
+    console.log('Discount column already exists in bills table');
+  } else {
+    console.error('Error adding discount column:', err);
+    throw err;
+  }
+}
+
+try {
+  db.prepare('ALTER TABLE bills ADD COLUMN total_cost REAL').run();
+  console.log('Added total_cost column to bills table');
+} catch (err) {
+  if (err.code === 'SQLITE_ERROR' && err.message.includes('duplicate column name')) {
+    console.log('Total_cost column already exists in bills table');
+  } else {
+    console.error('Error adding total_cost column:', err);
+    throw err;
+  }
+}
+
+// Create tables (for new databases)
 db.prepare(`
   CREATE TABLE IF NOT EXISTS customers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,6 +47,11 @@ db.prepare(`
   CREATE TABLE IF NOT EXISTS bills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     customer_id INTEGER,
+    payment_method TEXT,
+    amount_paid REAL,
+    change REAL,
+    discount REAL DEFAULT 0.0,
+    total_cost REAL,
     createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id) REFERENCES customers(id)
   )
@@ -207,7 +239,10 @@ ipcMain.handle('inventory:checkBarcode', (event, barcode) => {
 
 // Save bill and update udhari
 ipcMain.handle('billing:saveBill', (event, billData) => {
-  const insertBillStmt = db.prepare(`INSERT INTO bills (customer_id) VALUES (?)`);
+  const insertBillStmt = db.prepare(`
+    INSERT INTO bills (customer_id, payment_method, amount_paid, change, discount, total_cost) 
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
   const insertBillItemStmt = db.prepare(`
     INSERT INTO bill_items (bill_id, item_id, quantity, price, total) 
     VALUES (?, ?, ?, ?, ?)
@@ -236,8 +271,30 @@ ipcMain.handle('billing:saveBill', (event, billData) => {
       }
     }
 
+    // Use provided values and round to two decimal places
+    const totalCost = Number(bill.totalCost.toFixed(2));
+    const amountPaid = bill.isDebt ? 0 : Number(bill.amountPaid.toFixed(2));
+    const change = bill.isDebt ? 0 : Number(bill.change.toFixed(2));
+    const discount = Number(bill.discount.toFixed(2)) || 0;
+
+    // Validate numerical values
+    if (isNaN(totalCost)) throw new Error('Invalid totalCost: must be a valid number');
+    if (isNaN(amountPaid)) throw new Error('Invalid amountPaid: must be a valid number');
+    if (isNaN(change)) throw new Error('Invalid change: must be a valid number');
+    if (isNaN(discount)) throw new Error('Invalid discount: must be a valid number');
+    if (totalCost < 0 || amountPaid < 0 || change < 0 || discount < 0) {
+      throw new Error('Total cost, amount paid, change, and discount must be non-negative');
+    }
+
     // Insert the bill
-    const billId = insertBillStmt.run(bill.customer_id || null).lastInsertRowid;
+    const billId = insertBillStmt.run(
+      bill.customer_id || null,
+      bill.paymentMethod || 'N/A',
+      amountPaid,
+      change,
+      discount,
+      totalCost
+    ).lastInsertRowid;
 
     // Insert bill items
     for (const item of bill.totalItems) {
@@ -247,21 +304,78 @@ ipcMain.handle('billing:saveBill', (event, billData) => {
 
     // Record udhari if debt
     if (bill.isDebt) {
-      const totalAmount = bill.totalItems.reduce((sum, item) => sum + item.total, 0);
-      insertUdhariStmt.run(bill.customer_id, billId, -totalAmount, 'debt');
+      insertUdhariStmt.run(bill.customer_id, billId, -totalCost, 'debt');
       db.prepare('UPDATE customers SET udhari = udhari + ? WHERE id = ?')
-        .run(-totalAmount, bill.customer_id);
+        .run(-totalCost, bill.customer_id);
     }
+
+    // Notify all open windows of the new bill
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('billing:newBill', {
+        id: billId,
+        customer_iddob: bill.customer_id || null,
+        totalItems: bill.totalItems,
+        totalCost: totalCost,
+        discount: discount,
+        amountPaid: amountPaid,
+        change: change,
+        paymentMethod: bill.paymentMethod || 'N/A',
+        createdAt: new Date().toISOString()
+      });
+    });
+
+    return billId;
   });
 
   try {
     console.log('Processing bill:', billData);
-    transaction(billData);
-    console.log('Bill saved successfully');
-    return { success: true };
+    const billId = transaction(billData);
+    console.log('Bill saved successfully with ID:', billId);
+    return { success: true, billId };
   } catch (err) {
     console.error('Billing transaction failed:', err.message, err.stack);
     return { success: false, error: err.message };
+  }
+});
+
+// GET bills
+ipcMain.handle('billing:getBills', () => {
+  try {
+    const bills = db.prepare(`
+      SELECT bills.id, bills.customer_id, bills.payment_method, bills.amount_paid, bills.change, bills.discount, bills.total_cost, bills.createdAt,
+             customers.name AS customer_name, customers.mobile_number AS customer_mobile
+      FROM bills
+      LEFT JOIN customers ON bills.customer_id = customers.id
+    `).all();
+
+    const billItemsStmt = db.prepare(`
+      SELECT bi.quantity, bi.price, bi.total, i.name, i.unit AS measure, i.barcode
+      FROM bill_items bi
+      JOIN items i ON bi.item_id = i.id
+      WHERE bi.bill_id = ?
+    `);
+
+    return bills.map(bill => {
+      const items = billItemsStmt.all(bill.id);
+      return {
+        id: bill.id,
+        customer_id: bill.customer_id,
+        customer_name: bill.customer_name || 'N/A',
+        customer_mobile: bill.customer_mobile || 'N/A',
+        createdAt: bill.createdAt,
+        data: JSON.stringify({
+          totalItems: items,
+          discount: bill.discount || 0,
+          totalCost: bill.total_cost || (bill.amount_paid + bill.change),
+          amountPaid: bill.amount_paid,
+          change: bill.change,
+          paymentMethod: bill.payment_method || 'N/A'
+        })
+      };
+    });
+  } catch (err) {
+    console.error('Error fetching bills:', err);
+    throw new Error('Failed to fetch bills');
   }
 });
 
@@ -411,5 +525,18 @@ ipcMain.handle('udhari:clearAll', () => {
   } catch (err) {
     console.error('Clear udhari failed:', err);
     return { success: false, error: err.message };
+  }
+});
+
+// GET item names by barcodes
+ipcMain.handle('inventory:getItemNames', (event, barcodes) => {
+  try {
+    if (!barcodes || barcodes.length === 0) return [];
+    const placeholders = barcodes.map(() => '?').join(',');
+    const query = `SELECT barcode, name FROM items WHERE barcode IN (${placeholders})`;
+    return db.prepare(query).all(...barcodes);
+  } catch (err) {
+    console.error('Error fetching item names:', err);
+    throw new Error('Failed to fetch item names');
   }
 });
