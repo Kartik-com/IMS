@@ -1,0 +1,231 @@
+// Customers Table
+Table customers {
+  id integer [primary key, increment]
+  name varchar [not null]
+  mobile_number varchar [unique, not null]
+  udhari real [default: 0.0]
+}
+
+Table bill_items {
+  id integer [primary key, increment]
+  bill_id integer
+  item_id integer
+  quantity integer [not null, default: 1]
+  price real [not null]  // -- The price at which the item is sold to the customer
+  total real [not null]  // -- Calculated as quantity * price
+}
+
+Ref: bill_items.bill_id > bills.id
+Ref: bill_items.item_id > items.id
+
+
+// Bills Table
+Table bills {
+  id integer [primary key, increment]
+  customer_id integer
+  createdAt timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+Ref: bills.customer_id > customers.id
+
+Table udhari {
+  id integer [primary key, increment]
+  customer_id integer [not null]
+  bill_id integer  // nullable; NULL if it's a repayment
+  amount real [not null]  // positive for credit (repayment), negative for debt
+  type varchar [not null] // 'debt' or 'repayment'
+  createdAt timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+Ref: udhari.customer_id > customers.id
+Ref: udhari.bill_id > bills.id
+
+
+// Items Table
+Table items {
+  id integer [primary key, increment]
+  name varchar [not null]
+  barcode varchar [unique, not null]
+  gstPercentage real
+  buyingCost real
+  sellingCost real
+  MRP real
+  stock integer
+  unit varchar [not null]
+}
+
+
+Ah, I see! So, the **`items`** table is actually meant to represent the **inventory** of the shop, not directly related to individual bills. The relationship between the items and bills should reflect the **items available in the shop's inventory** and the **items purchased by customers** in their bills.
+
+In that case, you don't want to store item data like name, price, etc., in the `bill_items` table as part of the bill itself. Instead, you would reference the **inventory (items)** in the bill, **tracking quantities and prices** in the `bill_items` table.
+
+---
+
+### Updated Concept:
+
+* **`items` table**: This holds the inventory for the shop — product details like name, barcode, price, stock, etc.
+* **`bill_items` table**: This table represents the specific items bought by the customer in a bill, but it references the `items` table for inventory data. This table will store the **quantity of each item purchased** in a bill and the **price at which it was sold** (which might differ from the `sellingCost` or `MRP` in the `items` table).
+
+---
+
+### Updated Schema:
+
+1. **Items Table** (Inventory in the Shop)
+
+```sql
+Table items {
+  id integer [primary key, increment]
+  name varchar [not null]
+  barcode varchar [unique, not null]
+  gstPercentage real
+  buyingCost real
+  sellingCost real
+  MRP real
+  stock integer
+  unit varchar [not null]
+}
+```
+
+This table is just for storing **inventory details** like name, price, stock levels, etc. The `stock` column keeps track of how many units are available.
+
+2. **Bill Items Table** (Items purchased by customers in bills)
+
+```sql
+Table bill_items {
+  id integer [primary key, increment]
+  bill_id integer
+  item_id integer
+  quantity integer [not null, default: 1]
+  price real [not null]  -- The price at which the item is sold to the customer
+  total real [not null]  -- Calculated as quantity * price
+}
+
+Ref: bill_items.bill_id > bills.id
+Ref: bill_items.item_id > items.id
+```
+
+This table now links a **bill** to the **items purchased** and stores the **quantity** and **price** at which the item is sold to the customer. The `price` might differ from the `sellingCost` in the `items` table (e.g., due to discounts), and `total` is calculated as `quantity * price`.
+
+---
+
+### How It Will Work:
+
+Let’s go through a sample scenario again where **Ravi Kumar** buys items **on credit** (udhārī), but we treat **items as inventory**.
+
+### Step 1: **Insert Inventory Items**
+
+Insert the items into the **inventory** (`items` table):
+
+```sql
+-- Insert Milk item
+INSERT INTO items (name, barcode, gstPercentage, buyingCost, sellingCost, MRP, stock, unit)
+VALUES ('Milk', '1234567890', 5.0, 40.0, 45.0, 50.0, 100, 'ltr');
+
+-- Insert Sugar item
+INSERT INTO items (name, barcode, gstPercentage, buyingCost, sellingCost, MRP, stock, unit)
+VALUES ('Sugar', '9876543210', 5.0, 30.0, 35.0, 40.0, 50, 'kg');
+```
+
+### Step 2: **Create Bill for Ravi (Customer)**
+
+Now, Ravi buys items and we create a **bill** for him:
+
+```sql
+-- Insert Bill for Ravi (Customer ID = 1)
+INSERT INTO bills (customer_id)
+VALUES (1);
+```
+
+### Step 3: **Insert Bill Items (Items Purchased)**
+
+In this step, we track which **items Ravi purchased** and **how much he paid**. We reference the inventory (items) from the **`items` table**.
+
+```sql
+-- Insert Bill Item for Milk (Bill ID = 1, Item ID = 1, 2 liters at ₹45 each)
+INSERT INTO bill_items (bill_id, item_id, quantity, price, total)
+VALUES (1, 1, 2, 45.0, 2 * 45.0);  -- Milk: 2 liters at ₹45 each, total = ₹90
+
+-- Insert Bill Item for Sugar (Bill ID = 1, Item ID = 2, 1 kg at ₹35 each)
+INSERT INTO bill_items (bill_id, item_id, quantity, price, total)
+VALUES (1, 2, 1, 35.0, 1 * 35.0);  -- Sugar: 1 kg at ₹35 each, total = ₹35
+```
+
+### Step 4: **Record Debt (Udhārī)**
+
+Since Ravi is paying on **credit**, we record his **debt**:
+
+```sql
+-- Insert Debt for Bill #1 (Customer ID = 1)
+INSERT INTO udhari (customer_id, bill_id, amount, type)
+VALUES (1, 1, -125.0, 'debt');  -- Total debt: ₹90 (Milk) + ₹35 (Sugar) = ₹125
+```
+
+### Step 5: **Repayment (Udhārī)**
+
+Later, Ravi repays part of the debt. Let’s say he repays ₹50.
+
+```sql
+-- Insert Repayment for Ravi (Customer ID = 1)
+INSERT INTO udhari (customer_id, amount, type)
+VALUES (1, 50.0, 'repayment');  -- Ravi repays ₹50
+```
+
+### Step 6: **View the Items in the Bill**
+
+To view the items Ravi bought in **Bill #1**, along with their quantities and prices, you can query the `bill_items` table:
+
+```sql
+SELECT
+  b.id AS bill_id,
+  b.createdAt AS bill_date,
+  i.name AS item_name,
+  bi.quantity,
+  bi.price,
+  bi.total
+FROM
+  bills b
+JOIN bill_items bi ON b.id = bi.bill_id
+JOIN items i ON bi.item_id = i.id
+WHERE b.customer_id = 1
+ORDER BY b.createdAt;
+```
+
+### 🧾 Sample Output:
+
+| bill\_id | bill\_date          | item\_name | quantity | price | total |
+| -------- | ------------------- | ---------- | -------- | ----- | ----- |
+| 1        | 2025-05-08 10:00:00 | Milk       | 2        | 45.0  | 90.0  |
+| 1        | 2025-05-08 10:00:00 | Sugar      | 1        | 35.0  | 35.0  |
+
+This shows the details of **Bill #1**, with the items Ravi bought, including the **quantity**, **price**, and **total**.
+
+### Step 7: **Update Inventory Stock**
+
+Since Ravi purchased the items, you’ll want to update the stock in the **`items` table**:
+
+```sql
+-- Update stock for Milk (2 liters sold, so decrease stock by 2)
+UPDATE items
+SET stock = stock - 2
+WHERE id = 1;  -- Item ID = 1 for Milk
+
+-- Update stock for Sugar (1 kg sold, so decrease stock by 1)
+UPDATE items
+SET stock = stock - 1
+WHERE id = 2;  -- Item ID = 2 for Sugar
+```
+
+---
+
+### Final Summary of Workflow:
+
+1. **Items** (Milk, Sugar) are added to the inventory (`items` table).
+2. Ravi makes a **purchase** — the bill is created in the `bills` table.
+3. The **purchased items** (Milk and Sugar) are inserted into the `bill_items` table, linking the bill to the inventory items and storing quantities and prices.
+4. A **debt** (udhārī) entry is made in the `udhari` table for the amount Ravi owes.
+5. Ravi makes a **repayment** — this is recorded in the `udhari` table.
+6. **Stock** levels in the `items` table are updated after each purchase.
+
+---
+
+Does this now align with your requirements? Let me know if you need further clarification or additional features!

@@ -22,25 +22,26 @@ body.dark-mode .card {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-body.dark-mode .udhari-table th {
+body.dark-mode .udhari-table th,
+body.dark-mode .transaction-table th {
   background-color: #4a704a;
   color: #ffffff;
 }
 
-body.dark-mode .udhari-table tr:nth-child(even) {
+body.dark-mode .udhari-table tr:nth-child(even),
+body.dark-mode .transaction-table tr:nth-child(even) {
   background-color: #424242;
 }
 
-body.dark-mode .udhari-table tr:hover {
+body.dark-mode .udhari-table tr:hover,
+body.dark-mode .transaction-table tr:hover {
   background-color: #4a4a4a;
 }
 
-body.dark-mode .udhari-table td {
+body.dark-mode .udhari-table td,
+body.dark-mode .transaction-table td,
+body.dark-mode .bill-details-table td {
   border: 1px solid #5a5a5a;
-}
-
-body.dark-mode .settled-row {
-  background-color: #3c3c3c;
 }
 
 body.dark-mode .modal-content {
@@ -103,12 +104,6 @@ body.dark-mode h2 {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.filter-section,
-.table-section,
-.summary-section {
-  transition: all 0.3s ease;
-}
-
 .form-group {
   margin-bottom: 10px;
 }
@@ -126,8 +121,8 @@ body.dark-mode .form-group label {
 
 .form-group input,
 .form-group textarea,
-.filter-section input,
-.filter-section select {
+.filter-container input,
+.filter-container select {
   width: 100%;
   padding: 8px;
   border: 1px solid #8e8e8e;
@@ -139,8 +134,8 @@ body.dark-mode .form-group label {
 
 body.dark-mode .form-group input,
 body.dark-mode .form-group textarea,
-body.dark-mode .filter-section input,
-body.dark-mode .filter-section select {
+body.dark-mode .filter-container input,
+body.dark-mode .filter-container select {
   background-color: #4a4a4a;
   border-color: #6e6e6e;
   color: #d3d3d3;
@@ -148,8 +143,8 @@ body.dark-mode .filter-section select {
 
 .form-group input:focus,
 .form-group textarea:focus,
-.filter-section input:focus,
-.filter-section select:focus {
+.filter-container input:focus,
+.filter-container select:focus {
   outline: none;
   border-color: #1f4e79;
   box-shadow: 0 0 3px rgba(31, 78, 121, 0.3);
@@ -157,13 +152,17 @@ body.dark-mode .filter-section select {
 
 body.dark-mode .form-group input:focus,
 body.dark-mode .form-group textarea:focus,
-body.dark-mode .filter-section input:focus,
-body.dark-mode .filter-section select:focus {
+body.dark-mode .filter-container input:focus,
+body.dark-mode .filter-container select:focus {
   border-color: #90caf9;
   box-shadow: 0 0 3px rgba(144, 202, 249, 0.3);
 }
 
 .filter-section {
+  margin-bottom: 15px;
+}
+
+.filter-container {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -172,7 +171,8 @@ body.dark-mode .filter-section select:focus {
 
 .filter-group {
   flex: 1;
-  min-width: 200px;
+  min-width: 150px;
+  max-width: 200px;
 }
 
 .action-buttons {
@@ -215,15 +215,6 @@ body.dark-mode .filter-section select:focus {
   background-color: #c8e6c9;
 }
 
-.btn-warning {
-  background-color: #fff9c4;
-  color: #f57c00;
-}
-
-.btn-warning:hover {
-  background-color: #fff59d;
-}
-
 .btn-danger {
   background-color: #ffebee;
   color: #d32f2f;
@@ -253,67 +244,59 @@ body.dark-mode .filter-section select:focus {
   background-color: #fff59d;
 }
 
-.udhari-table {
+.udhari-table,
+.transaction-table,
+.bill-details-table {
   width: 100%;
   border-collapse: collapse;
   border: 1px solid #8e8e8e;
   background-color: #ffffff;
 }
 
-body.dark-mode .udhari-table {
+body.dark-mode .udhari-table,
+body.dark-mode .transaction-table,
+body.dark-mode .bill-details-table {
   background-color: #3c3c3c;
   border-color: #5a5a5a;
 }
 
 .udhari-table th,
-.udhari-table td {
+.udhari-table td,
+.transaction-table th,
+.transaction-table td,
+.bill-details-table th,
+.bill-details-table td {
   padding: 8px;
   text-align: left;
   border: 1px solid #8e8e8e;
 }
 
-.udhari-table th {
+.udhari-table th,
+.transaction-table th,
+.bill-details-table th {
   background-color: #c5e1a5;
   color: #000000;
   font-weight: 600;
 }
 
-.udhari-table tr:nth-child(even) {
+.udhari-table tr:nth-child(even),
+.transaction-table tr:nth-child(even) {
   background-color: #f5f5f5;
 }
 
-.udhari-table tr:hover {
+.udhari-table tr:hover,
+.transaction-table tr:hover {
   background-color: #e0e0e0;
 }
 
-.udhari-table th:last-child {
-  width: 220px; /* Fixed width for Actions column to fit buttons */
+.customer-row {
+  cursor: pointer;
 }
 
-.settled-row {
-  text-decoration: line-through;
-  opacity: 0.7;
-  background-color: #e0e0e0;
+.transaction-table {
+  margin: 10px 0;
 }
 
-.status-paid {
-  color: #2e7d32;
-  font-weight: bold;
-}
-.status-pending {
-  color: #d32f2f;
-  font-weight: bold;
-}
-.status-partial {
-  color: #f57c00;
-  font-weight: bold;
-}
-.status-settled {
-  color: #616161;
-  font-weight: bold;
-}
-
-/* Action Buttons in Table */
 .actions-cell {
   display: flex;
   flex-wrap: wrap;
@@ -353,24 +336,6 @@ body.dark-mode .udhari-table {
   background-color: #c8e6c9;
 }
 
-.action-btn.secondary {
-  background-color: #e0e0e0;
-  color: #424242;
-}
-
-.action-btn.secondary:hover {
-  background-color: #bdbdbd;
-}
-
-.action-btn.warning {
-  background-color: #fff9c4;
-  color: #f57c00;
-}
-
-.action-btn.warning:hover {
-  background-color: #fff59d;
-}
-
 .action-btn.danger {
   background-color: #ffebee;
   color: #d32f2f;
@@ -380,7 +345,6 @@ body.dark-mode .udhari-table {
   background-color: #ffcdd2;
 }
 
-/* Tooltip Styling */
 .tooltip {
   visibility: hidden;
   background-color: #333;
@@ -418,7 +382,6 @@ body.dark-mode .tooltip::after {
   border-color: #616161 transparent transparent transparent;
 }
 
-/* Summary Section */
 .summary-section {
   margin-bottom: 15px;
 }
@@ -463,7 +426,6 @@ body.dark-mode .summary-stats .stat span:last-child {
   color: #90caf9;
 }
 
-/* Modal Styling */
 .modal {
   display: none;
   position: fixed;
@@ -481,7 +443,7 @@ body.dark-mode .summary-stats .stat span:last-child {
   padding: 15px;
   border-radius: 3px;
   width: 90%;
-  max-width: 400px;
+  max-width: 600px;
   position: relative;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -507,25 +469,22 @@ body.dark-mode .close-btn:hover {
   color: #d3d3d3;
 }
 
-.history-list {
-  list-style: none;
-  padding: 0;
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 15px;
 }
 
-.history-list li {
-  padding: 8px 0;
-  border-bottom: 1px solid #8e8e8e;
+.bill-details-table {
+  margin-top: 10px;
 }
 
-body.dark-mode .history-list li {
-  border-bottom: 1px solid #5a5a5a;
+.bill-details-table th,
+.bill-details-table td {
+  padding: 6px;
 }
 
-.history-list li:last-child {
-  border-bottom: none;
-}
-
-/* Toast Notification */
 .toast {
   position: fixed;
   bottom: 20px;
@@ -548,20 +507,38 @@ body.dark-mode .history-list li {
   color: #d32f2f;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .container {
     padding: 10px;
   }
 
-  .udhari-table th,
-  .udhari-table td {
-    padding: 6px;
-    font-size: 0.9rem;
+  .filter-container {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .udhari-table th:last-child {
-    width: auto;
+  .filter-group {
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .action-buttons .btn {
+    width: 100%;
+  }
+
+  .udhari-table th,
+  .udhari-table td,
+  .transaction-table th,
+  .transaction-table td,
+  .bill-details-table th,
+  .bill-details-table td {
+    padding: 6px;
+    font-size: 0.9rem;
   }
 
   .actions-cell {
@@ -575,33 +552,15 @@ body.dark-mode .history-list li {
     padding: 6px;
   }
 
-  .btn {
-    width: 100%;
-    padding: 8px;
-  }
-
   .modal-content {
     width: 95%;
-  }
-
-  .filter-group {
-    min-width: 100%;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .action-buttons .btn {
-    width: 100%;
   }
 
   .summary-stats .stat {
     min-width: 100%;
   }
 
-  header {
+  .header {
     flex-direction: column;
     gap: 10px;
   }
