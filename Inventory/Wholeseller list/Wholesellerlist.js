@@ -18,9 +18,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const wholesalerMOQInput = document.getElementById("wholesalerMOQ");
   const totalAmountInput = document.getElementById("totalAmount");
   const udhariInput = document.getElementById("udhari");
-  const remainingAmountToPayInput = document.getElementById(
-    "remainingAmountToPay"
-  );
   const specialtyProductInput = document.getElementById("specialtyProduct");
 
   // Fetch and display wholesalers
@@ -64,7 +61,6 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${wholesaler.moq || "N/A"}</td>
         <td>₹${wholesaler.total_amount.toFixed(2)}</td>
         <td>₹${wholesaler.udhari.toFixed(2)}</td>
-        <td>₹${wholesaler.remaining_amount_to_pay.toFixed(2)}</td>
         <td>${itemNames}</td>
         <td>
           <button class="action-btn edit-btn" onclick="editWholesaler(${
@@ -75,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
         wholesaler.tax_id || ""
       }', ${wholesaler.moq || null}, ${wholesaler.total_amount}, ${
         wholesaler.udhari
-      }, ${wholesaler.remaining_amount_to_pay})">Edit</button>
+      })">Edit</button>
           <button class="action-btn delete-btn" onclick="deleteWholesaler(${
             wholesaler.id
           })">Delete</button>
@@ -130,7 +126,6 @@ document.addEventListener("DOMContentLoaded", () => {
     wholesalerIdInput.value = "";
     totalAmountInput.value = "0.0";
     udhariInput.value = "0.0";
-    remainingAmountToPayInput.value = "0.0";
     specialtyProductInput.value = "";
     wholesalerModal.style.display = "block";
   });
@@ -158,8 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tax_id,
     moq,
     total_amount,
-    udhari,
-    remaining_amount_to_pay
+    udhari
   ) {
     modalTitle.textContent = "Edit Wholesaler";
     wholesalerIdInput.value = id;
@@ -172,7 +166,6 @@ document.addEventListener("DOMContentLoaded", () => {
     wholesalerMOQInput.value = moq || "";
     totalAmountInput.value = total_amount.toFixed(2);
     udhariInput.value = udhari.toFixed(2);
-    remainingAmountToPayInput.value = remaining_amount_to_pay.toFixed(2);
     wholesalerModal.style.display = "block";
   };
 
@@ -205,8 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
       moq: wholesalerMOQInput.value ? parseInt(wholesalerMOQInput.value) : null,
       total_amount: parseFloat(totalAmountInput.value) || 0.0,
       udhari: parseFloat(udhariInput.value) || 0.0,
-      remaining_amount_to_pay:
-        parseFloat(remainingAmountToPayInput.value) || 0.0,
       specialty_product: specialtyProductInput.value.trim() || null,
     };
 
