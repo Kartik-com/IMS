@@ -37,6 +37,87 @@ try {
   }
 }
 
+// Schema migration: Update wholesalers table
+try {
+  db.prepare(
+    "ALTER TABLE wholesalers ADD COLUMN total_amount REAL DEFAULT 0.0"
+  ).run();
+  console.log("Added total_amount column to wholesalers table");
+} catch (err) {
+  if (
+    err.code === "SQLITE_ERROR" &&
+    err.message.includes("duplicate column name")
+  ) {
+    console.log("Total_amount column already exists in wholesalers table");
+  } else {
+    console.error("Error adding total_amount column:", err);
+    throw err;
+  }
+}
+
+try {
+  db.prepare(
+    "ALTER TABLE wholesalers ADD COLUMN udhari REAL DEFAULT 0.0"
+  ).run();
+  console.log("Added udhari column to wholesalers table");
+} catch (err) {
+  if (
+    err.code === "SQLITE_ERROR" &&
+    err.message.includes("duplicate column name")
+  ) {
+    console.log("Udhari column already exists in wholesalers table");
+  } else {
+    console.error("Error adding udhari column:", err);
+    throw err;
+  }
+}
+
+try {
+  db.prepare(
+    "ALTER TABLE wholesalers ADD COLUMN remaining_amount_to_pay REAL DEFAULT 0.0"
+  ).run();
+  console.log("Added remaining_amount_to_pay column to wholesalers table");
+} catch (err) {
+  if (
+    err.code === "SQLITE_ERROR" &&
+    err.message.includes("duplicate column name")
+  ) {
+    console.log(
+      "Remaining_amount_to_pay column already exists in wholesalers table"
+    );
+  } else {
+    console.error("Error adding remaining_amount_to_pay column:", err);
+    throw err;
+  }
+}
+
+try {
+  db.prepare("ALTER TABLE wholesalers DROP COLUMN credit_balance").run();
+  console.log("Dropped credit_balance column from wholesalers table");
+} catch (err) {
+  if (err.code === "SQLITE_ERROR" && err.message.includes("no such column")) {
+    console.log("Credit_balance column does not exist in wholesalers table");
+  } else {
+    console.error("Error dropping credit_balance column:", err);
+    throw err;
+  }
+}
+
+try {
+  db.prepare("ALTER TABLE wholesalers ADD COLUMN specialty_product TEXT").run();
+  console.log("Added specialty_product column to wholesalers table");
+} catch (err) {
+  if (
+    err.code === "SQLITE_ERROR" &&
+    err.message.includes("duplicate column name")
+  ) {
+    console.log("Specialty_product column already exists in wholesalers table");
+  } else {
+    console.error("Error adding specialty_product column:", err);
+    throw err;
+  }
+}
+
 // Create tables (for new databases)
 db.prepare(
   `
@@ -121,7 +202,23 @@ db.prepare(
     address TEXT,
     tax_id TEXT,
     moq INTEGER,
-    credit_balance REAL DEFAULT 0.0
+    total_amount REAL DEFAULT 0.0,
+    udhari REAL DEFAULT 0.0,
+    remaining_amount_to_pay REAL DEFAULT 0.0,
+    specialty_product TEXT
+  )
+`
+).run();
+
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS wholesaler_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wholesaler_id INTEGER NOT NULL,
+    item_id INTEGER NOT NULL,
+    FOREIGN KEY (wholesaler_id) REFERENCES wholesalers(id),
+    FOREIGN KEY (item_id) REFERENCES items(id),
+    UNIQUE (wholesaler_id, item_id)
   )
 `
 ).run();
@@ -630,8 +727,8 @@ ipcMain.handle("wholesalers:addWholesaler", (event, wholesaler) => {
     return db
       .prepare(
         `
-      INSERT INTO wholesalers (name, contact_number, email, address, tax_id, moq, credit_balance)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO wholesalers (name, contact_number, email, address, tax_id, moq, total_amount, udhari, remaining_amount_to_pay, specialty_product)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
@@ -641,7 +738,10 @@ ipcMain.handle("wholesalers:addWholesaler", (event, wholesaler) => {
         wholesaler.address || null,
         wholesaler.tax_id || null,
         wholesaler.moq || null,
-        wholesaler.credit_balance || 0.0
+        wholesaler.total_amount || 0.0,
+        wholesaler.udhari || 0.0,
+        wholesaler.remaining_amount_to_pay || 0.0,
+        wholesaler.specialty_product || null
       );
   } catch (err) {
     console.error("Error adding wholesaler:", err);
@@ -656,7 +756,7 @@ ipcMain.handle("wholesalers:updateWholesaler", (event, wholesaler) => {
       .prepare(
         `
       UPDATE wholesalers
-      SET name = ?, contact_number = ?, email = ?, address = ?, tax_id = ?, moq = ?, credit_balance = ?
+      SET name = ?, contact_number = ?, email = ?, address = ?, tax_id = ?, moq = ?, total_amount = ?, udhari = ?, remaining_amount_to_pay = ?, specialty_product = ?
       WHERE id = ?
     `
       )
@@ -667,7 +767,10 @@ ipcMain.handle("wholesalers:updateWholesaler", (event, wholesaler) => {
         wholesaler.address || null,
         wholesaler.tax_id || null,
         wholesaler.moq || null,
-        wholesaler.credit_balance || 0.0,
+        wholesaler.total_amount || 0.0,
+        wholesaler.udhari || 0.0,
+        wholesaler.remaining_amount_to_pay || 0.0,
+        wholesaler.specialty_product || null,
         wholesaler.id
       );
   } catch (err) {
@@ -696,5 +799,21 @@ ipcMain.handle("wholesalers:checkContactNumber", (event, contact_number) => {
   } catch (err) {
     console.error("Error checking contact number:", err);
     throw new Error("Failed to check contact number");
+  }
+});
+
+// GET items for a wholesaler
+ipcMain.handle("wholesalers:getWholesalerItems", (event, wholesalerId) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT i.id, i.name
+      FROM wholesaler_items wi
+      JOIN items i ON wi.item_id = i.id
+      WHERE wi.wholesaler_id = ?
+    `);
+    return stmt.all(wholesalerId);
+  } catch (err) {
+    console.error("Error fetching wholesaler items:", err);
+    throw new Error("Failed to fetch wholesaler items");
   }
 });

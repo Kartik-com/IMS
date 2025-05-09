@@ -16,7 +16,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const wholesalerAddressInput = document.getElementById("wholesalerAddress");
   const wholesalerTaxIdInput = document.getElementById("wholesalerTaxId");
   const wholesalerMOQInput = document.getElementById("wholesalerMOQ");
-  const creditBalanceInput = document.getElementById("creditBalance");
+  const totalAmountInput = document.getElementById("totalAmount");
+  const udhariInput = document.getElementById("udhari");
+  const remainingAmountToPayInput = document.getElementById(
+    "remainingAmountToPay"
+  );
+  const specialtyProductInput = document.getElementById("specialtyProduct");
 
   // Fetch and display wholesalers
   async function loadWholesalers() {
@@ -24,8 +29,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const wholesalers = await ipcRenderer.invoke(
         "wholesalers:getWholesalers"
       );
-      displayWholesalers(wholesalers);
-      return wholesalers;
+      const wholesalersWithItems = await Promise.all(
+        wholesalers.map(async (wholesaler) => {
+          const items = await ipcRenderer.invoke(
+            "wholesalers:getWholesalerItems",
+            wholesaler.id
+          );
+          return { ...wholesaler, items };
+        })
+      );
+      displayWholesalers(wholesalersWithItems);
+      return wholesalersWithItems;
     } catch (error) {
       console.error("Error loading wholesalers:", error);
       return [];
@@ -36,24 +50,32 @@ document.addEventListener("DOMContentLoaded", () => {
   function displayWholesalers(wholesalers) {
     wholesalerTableBody.innerHTML = "";
     wholesalers.forEach((wholesaler) => {
+      const itemNames =
+        wholesaler.items.map((item) => item.name).join(", ") || "None";
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${wholesaler.id}</td>
         <td>${wholesaler.name}</td>
+        <td>${wholesaler.specialty_product || "N/A"}</td>
         <td>${wholesaler.contact_number}</td>
         <td>${wholesaler.email || "N/A"}</td>
         <td>${wholesaler.address || "N/A"}</td>
         <td>${wholesaler.tax_id || "N/A"}</td>
         <td>${wholesaler.moq || "N/A"}</td>
-        <td>₹${wholesaler.credit_balance.toFixed(2)}</td>
+        <td>₹${wholesaler.total_amount.toFixed(2)}</td>
+        <td>₹${wholesaler.udhari.toFixed(2)}</td>
+        <td>₹${wholesaler.remaining_amount_to_pay.toFixed(2)}</td>
+        <td>${itemNames}</td>
         <td>
           <button class="action-btn edit-btn" onclick="editWholesaler(${
             wholesaler.id
-          }, '${wholesaler.name}', '${wholesaler.contact_number}', '${
-        wholesaler.email || ""
-      }', '${wholesaler.address || ""}', '${wholesaler.tax_id || ""}', ${
-        wholesaler.moq || null
-      }, ${wholesaler.credit_balance})">Edit</button>
+          }, '${wholesaler.name}', '${wholesaler.specialty_product || ""}', '${
+        wholesaler.contact_number
+      }', '${wholesaler.email || ""}', '${wholesaler.address || ""}', '${
+        wholesaler.tax_id || ""
+      }', ${wholesaler.moq || null}, ${wholesaler.total_amount}, ${
+        wholesaler.udhari
+      }, ${wholesaler.remaining_amount_to_pay})">Edit</button>
           <button class="action-btn delete-btn" onclick="deleteWholesaler(${
             wholesaler.id
           })">Delete</button>
@@ -71,9 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .toLowerCase();
 
     try {
-      const wholesalers = await ipcRenderer.invoke(
-        "wholesalers:getWholesalers"
-      );
+      const wholesalers = await loadWholesalers();
       let filteredWholesalers = wholesalers;
 
       // Filter by ID
@@ -108,7 +128,10 @@ document.addEventListener("DOMContentLoaded", () => {
     modalTitle.textContent = "Create Wholesaler";
     wholesalerForm.reset();
     wholesalerIdInput.value = "";
-    creditBalanceInput.value = "0.0";
+    totalAmountInput.value = "0.0";
+    udhariInput.value = "0.0";
+    remainingAmountToPayInput.value = "0.0";
+    specialtyProductInput.value = "";
     wholesalerModal.style.display = "block";
   });
 
@@ -128,22 +151,28 @@ document.addEventListener("DOMContentLoaded", () => {
   window.editWholesaler = function (
     id,
     name,
+    specialty_product,
     contact_number,
     email,
     address,
     tax_id,
     moq,
-    credit_balance
+    total_amount,
+    udhari,
+    remaining_amount_to_pay
   ) {
     modalTitle.textContent = "Edit Wholesaler";
     wholesalerIdInput.value = id;
     wholesalerNameInput.value = name;
+    specialtyProductInput.value = specialty_product || "";
     contactNumberInput.value = contact_number;
     wholesalerEmailInput.value = email || "";
     wholesalerAddressInput.value = address || "";
     wholesalerTaxIdInput.value = tax_id || "";
     wholesalerMOQInput.value = moq || "";
-    creditBalanceInput.value = credit_balance.toFixed(2);
+    totalAmountInput.value = total_amount.toFixed(2);
+    udhariInput.value = udhari.toFixed(2);
+    remainingAmountToPayInput.value = remaining_amount_to_pay.toFixed(2);
     wholesalerModal.style.display = "block";
   };
 
@@ -174,7 +203,11 @@ document.addEventListener("DOMContentLoaded", () => {
       address: wholesalerAddressInput.value.trim() || null,
       tax_id: wholesalerTaxIdInput.value.trim() || null,
       moq: wholesalerMOQInput.value ? parseInt(wholesalerMOQInput.value) : null,
-      credit_balance: parseFloat(creditBalanceInput.value) || 0.0,
+      total_amount: parseFloat(totalAmountInput.value) || 0.0,
+      udhari: parseFloat(udhariInput.value) || 0.0,
+      remaining_amount_to_pay:
+        parseFloat(remainingAmountToPayInput.value) || 0.0,
+      specialty_product: specialtyProductInput.value.trim() || null,
     };
 
     try {
