@@ -1,1 +1,56 @@
-<h1>Customers</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer List</title>
+  <link rel="stylesheet" href="customers.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Customer List</h1>
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Search by Customer ID...">
+      <input type="text" id="searchByNameMobile" placeholder="Search by Name or Mobile Number...">
+    </div>
+    <button id="createCustomerBtn" class="action-btn create-btn">Create Customer</button>
+    <table id="customerTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Mobile Number</th>
+          <th>Udhari (₹)</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="customerTableBody"></tbody>
+    </table>
+
+    <!-- Modal for Create/Edit Customer -->
+    <div id="customerModal" class="modal">
+      <div class="modal-content">
+        <span id="closeModal" class="close">×</span>
+        <h2 id="modalTitle">Create Customer</h2>
+        <form id="customerForm">
+          <input type="hidden" id="customerId">
+          <div class="form-group">
+            <label for="customerName">Name:</label>
+            <input type="text" id="customerName" required>
+          </div>
+          <div class="form-group">
+            <label for="mobileNumber">Mobile Number:</label>
+            <input type="text" id="mobileNumber" required>
+          </div>
+          <div class="form-group">
+            <label for="udhari">Udhari (₹):</label>
+            <input type="number" id="udhari" step="0.01" value="0.0">
+          </div>
+          <button type="submit" id="saveCustomerBtn" class="action-btn save-btn">Save</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script src="customers.js"></script>
+</body>
+</html>
