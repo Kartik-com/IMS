@@ -4,31 +4,51 @@ let currentlyOpenBillId = null;
 let bills = [];
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('Billing History page loaded');
   loadBills();
 
-  // Search functionality
-  document.getElementById('searchInput').addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase();
+  // Combined search functionality
+  const applyFilters = () => {
+    const searchIdTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchNameMobileTerm = document.getElementById('searchByNameMobile').value.toLowerCase();
     const rows = document.querySelectorAll('#billsTableBody tr:not(.details-row)');
+
     rows.forEach(row => {
       const billId = row.cells[0].textContent.toLowerCase();
+      const customerName = row.cells[2].textContent.toLowerCase();
+      const customerMobile = row.cells[3].textContent.toLowerCase();
       const detailsRow = row.nextElementSibling?.classList.contains('details-row') ? row.nextElementSibling : null;
-      const shouldDisplay = billId.includes(searchTerm);
+
+      const matchesId = searchIdTerm ? billId.includes(searchIdTerm) : true;
+      const matchesNameMobile = searchNameMobileTerm
+        ? (customerName.includes(searchNameMobileTerm) || customerMobile.includes(searchNameMobileTerm))
+        : true;
+
+      const shouldDisplay = matchesId && matchesNameMobile;
       row.style.display = shouldDisplay ? '' : 'none';
       if (detailsRow) detailsRow.style.display = shouldDisplay ? '' : 'none';
     });
-  });
+  };
+
+  // Search by ID
+  document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+  // Search by Name or Mobile Number
+  document.getElementById('searchByNameMobile').addEventListener('input', applyFilters);
 
   // Listen for new bills
   ipcRenderer.on('billing:newBill', (event, newBill) => {
+    console.log('Received new bill via IPC:', newBill);
     bills.push(newBill);
     renderBillRow(newBill);
+    applyFilters(); // Apply filters to new bill
   });
 });
 
 async function loadBills() {
   try {
     bills = await ipcRenderer.invoke('billing:getBills');
+    console.log('Fetched bills:', bills);
     // Filter out bills with invalid data
     bills = bills.filter(bill => {
       try {
@@ -40,6 +60,7 @@ async function loadBills() {
         return false;
       }
     });
+    console.log('Filtered bills:', bills);
     const tableBody = document.getElementById('billsTableBody');
     tableBody.innerHTML = '';
     bills.forEach(bill => renderBillRow(bill));
@@ -52,6 +73,7 @@ function renderBillRow(bill) {
   let billData;
   try {
     billData = JSON.parse(bill.data);
+    console.log(`Parsed bill data for bill ID ${bill.id}:`, billData);
   } catch (error) {
     console.error(`Failed to parse bill data for bill ID ${bill.id}:`, bill.data, error);
     return; // Skip rendering this bill
@@ -80,6 +102,7 @@ function renderBillRow(bill) {
   `;
   row.addEventListener('click', () => toggleBillDetails(row, bill.id, bill));
   tableBody.appendChild(row);
+  console.log(`Rendered row for bill ID ${bill.id}`);
 }
 
 async function toggleBillDetails(row, billId, bill) {
