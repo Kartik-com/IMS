@@ -73,25 +73,6 @@ try {
 }
 
 try {
-  db.prepare(
-    "ALTER TABLE wholesalers ADD COLUMN remaining_amount_to_pay REAL DEFAULT 0.0"
-  ).run();
-  console.log("Added remaining_amount_to_pay column to wholesalers table");
-} catch (err) {
-  if (
-    err.code === "SQLITE_ERROR" &&
-    err.message.includes("duplicate column name")
-  ) {
-    console.log(
-      "Remaining_amount_to_pay column already exists in wholesalers table"
-    );
-  } else {
-    console.error("Error adding remaining_amount_to_pay column:", err);
-    throw err;
-  }
-}
-
-try {
   db.prepare("ALTER TABLE wholesalers DROP COLUMN credit_balance").run();
   console.log("Dropped credit_balance column from wholesalers table");
 } catch (err) {
@@ -116,6 +97,42 @@ try {
     console.error("Error adding specialty_product column:", err);
     throw err;
   }
+}
+
+// Migration: Merge remaining_amount_to_pay into udhari and drop the column
+try {
+  // Check if remaining_amount_to_pay exists
+  const columns = db.prepare("PRAGMA table_info(wholesalers)").all();
+  const hasRemainingAmount = columns.some(
+    (col) => col.name === "remaining_amount_to_pay"
+  );
+
+  if (hasRemainingAmount) {
+    // Update udhari with remaining_amount_to_pay where non-zero
+    db.prepare(
+      `
+      UPDATE wholesalers
+      SET udhari = COALESCE(udhari, 0.0) + COALESCE(remaining_amount_to_pay, 0.0)
+      WHERE remaining_amount_to_pay IS NOT NULL AND remaining_amount_to_pay != 0.0
+    `
+    ).run();
+    console.log("Merged remaining_amount_to_pay into udhari");
+
+    // Drop remaining_amount_to_pay
+    db.prepare(
+      "ALTER TABLE wholesalers DROP COLUMN remaining_amount_to_pay"
+    ).run();
+    console.log(
+      "Dropped remaining_amount_to_pay column from wholesalers table"
+    );
+  } else {
+    console.log(
+      "remaining_amount_to_pay column does not exist in wholesalers table"
+    );
+  }
+} catch (err) {
+  console.error("Error during remaining_amount_to_pay migration:", err);
+  throw err;
 }
 
 // Create tables (for new databases)
@@ -204,7 +221,6 @@ db.prepare(
     moq INTEGER,
     total_amount REAL DEFAULT 0.0,
     udhari REAL DEFAULT 0.0,
-    remaining_amount_to_pay REAL DEFAULT 0.0,
     specialty_product TEXT
   )
 `
@@ -727,8 +743,8 @@ ipcMain.handle("wholesalers:addWholesaler", (event, wholesaler) => {
     return db
       .prepare(
         `
-      INSERT INTO wholesalers (name, contact_number, email, address, tax_id, moq, total_amount, udhari, remaining_amount_to_pay, specialty_product)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO wholesalers (name, contact_number, email, address, tax_id, moq, total_amount, udhari, specialty_product)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
@@ -740,7 +756,6 @@ ipcMain.handle("wholesalers:addWholesaler", (event, wholesaler) => {
         wholesaler.moq || null,
         wholesaler.total_amount || 0.0,
         wholesaler.udhari || 0.0,
-        wholesaler.remaining_amount_to_pay || 0.0,
         wholesaler.specialty_product || null
       );
   } catch (err) {
@@ -756,7 +771,7 @@ ipcMain.handle("wholesalers:updateWholesaler", (event, wholesaler) => {
       .prepare(
         `
       UPDATE wholesalers
-      SET name = ?, contact_number = ?, email = ?, address = ?, tax_id = ?, moq = ?, total_amount = ?, udhari = ?, remaining_amount_to_pay = ?, specialty_product = ?
+      SET name = ?, contact_number = ?, email = ?, address = ?, tax_id = ?, moq = ?, total_amount = ?, udhari = ?, specialty_product = ?
       WHERE id = ?
     `
       )
@@ -769,7 +784,6 @@ ipcMain.handle("wholesalers:updateWholesaler", (event, wholesaler) => {
         wholesaler.moq || null,
         wholesaler.total_amount || 0.0,
         wholesaler.udhari || 0.0,
-        wholesaler.remaining_amount_to_pay || 0.0,
         wholesaler.specialty_product || null,
         wholesaler.id
       );
