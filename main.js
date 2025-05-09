@@ -44,6 +44,12 @@ function createWindow() {
             mainWindow.loadFile('./Admin/Sales/sales.html');
           },
         },
+        {
+          label: 'wholesaler history',
+          click: () => {
+            mainWindow.loadFile('./Inventory/wholesalersHistory/wholesalersHistory.html');
+          },
+        },
         { type: 'separator' },
         {
           label: 'Exit',

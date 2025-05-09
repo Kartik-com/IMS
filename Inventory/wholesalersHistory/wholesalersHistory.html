@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+  <title>Wholesalers History</title>
+  <link rel="stylesheet" href="wholesalersHistory.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Wholesalers History</h1>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search by Wholesaler ID...">
+      <input type="text" id="searchByNameContact" placeholder="Search by Name or Contact Number...">
+    </div>
+    <div class="wholesalers-list">
+      <table id="wholesalersTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Contact Number</th>
+            <th>Total Amount</th>
+            <th>Payment Method</th>
+          </tr>
+        </thead>
+        <tbody id="wholesalersTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="wholesalersHistory.js"></script>
+</body>
+</html>
