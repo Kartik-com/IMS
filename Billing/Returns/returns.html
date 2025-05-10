@@ -1,1 +1,99 @@
-<h1>Returns</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Return and Refund</title>
+    <link rel="stylesheet" href="returns.css">
+</head>
+<body>
+    <h2>Return and Refund</h2>
+
+    <div class="form-container">
+        <div class="search-row">
+            <div class="form-group">
+                <label for="billIdSearch">Search Bill ID</label>
+                <input type="text" id="billIdSearch" placeholder="Enter Bill ID">
+                <ul id="billIdSuggestions" class="suggestions"></ul>
+            </div>
+            <div class="form-group">
+                <label for="customerSearch">Search Customer</label>
+                <input type="text" id="customerSearch" placeholder="Enter Name or Mobile">
+                <ul id="customerSuggestions" class="suggestions"></ul>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="customerName">Customer Name</label>
+                <input type="text" id="customerName" readonly>
+            </div>
+            <div class="form-group">
+                <label for="mobileNumber">Mobile Number</label>
+                <input type="text" id="mobileNumber" readonly>
+            </div>
+            <div class="form-group">
+                <label for="billId">Bill ID</label>
+                <input type="text" id="billId" readonly>
+            </div>
+            <div class="form-group">
+                <label for="itemName">Item Name</label>
+                <input type="text" id="itemName" placeholder="Select or type item name">
+                <ul id="itemNameSuggestions" class="suggestions-list"></ul>
+            </div>
+            <div class="form-group">
+                <label for="barcode">Barcode</label>
+                <input type="text" id="barcode" list="barcodeSuggestions" placeholder="Enter or select barcode">
+                <datalist id="barcodeSuggestions"></datalist>
+            </div>
+            <div class="form-group">
+                <label for="quantity">Quantity</label>
+                <input type="number" id="quantity" min="1" placeholder="Enter quantity">
+            </div>
+            <div class="form-group">
+                <label for="refundAmount">Refund Amount (₹)</label>
+                <input type="number" id="refundAmount" min="0" step="0.01" placeholder="Enter refund amount">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="returnDate">Return Date</label>
+                <input type="date" id="returnDate">
+            </div>
+            <div class="form-group">
+                <label for="reason">Reason (Optional)</label>
+                <textarea id="reason" placeholder="Enter reason for return"></textarea>
+            </div>
+        </div>
+        <button id="actionButton">Process Return</button>
+        <div id="error-message" class="error-message"></div>
+        <div id="non-editable-message" class="non-editable-message"></div>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="returnsSearch" placeholder="Search returns by customer, bill ID, or item">
+        <ul id="returnsSuggestions" class="suggestions"></ul>
+    </div>
+
+    <div class="returns-table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Customer Name</th>
+                    <th>Mobile Number</th>
+                    <th>Bill ID</th>
+                    <th>Item Name</th>
+                    <th>Barcode</th>
+                    <th>Quantity</th>
+                    <th>Refund Amount</th>
+                    <th>Reason</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="returnsBody"></tbody>
+        </table>
+    </div>
+
+    <script src="returns.js"></script>
+</body>
+</html>

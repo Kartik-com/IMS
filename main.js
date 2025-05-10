@@ -133,6 +133,12 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// Handle SIGINT for graceful shutdown
+process.on('SIGINT', () => {
+  console.log('Received SIGINT. Closing application...');
+  app.quit();
+});
+
 ipcMain.on('navigate-to', (event, page) => {
   mainWindow.loadFile(page);
 });
