@@ -39,6 +39,12 @@ function createWindow() {
           },
         },
         {
+          label: 'Wholesalers List',
+          click: () => {
+            mainWindow.loadFile('./Inventory/Wholeseller list/Wholesellerlist.html');
+          },
+        },
+        {
           label: 'Admin',
           click: () => {
             mainWindow.loadFile('./Admin/Sales/sales.html');

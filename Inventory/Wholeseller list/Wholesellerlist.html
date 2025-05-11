@@ -1,103 +1,146 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wholesaler List</title>
-    <link rel="stylesheet" href="wholesalers.css" />
-  </head>
-  <body>
+    <link rel="stylesheet" href="Wholesellerlist.css" />
+</head>
+<body>
     <div class="container">
-      <h1>Wholesaler List</h1>
-      <div class="search-container">
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="Search by Wholesaler ID..."
-        />
-        <input
-          type="text"
-          id="searchByNameContact"
-          placeholder="Search by Name, Contact, Email, or Address..."
-        />
-      </div>
-      <button id="createWholesalerBtn" class="action-btn create-btn">
-        Create Wholesaler
-      </button>
-      <table id="wholesalerTable">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Specialty Product</th>
-            <th>Contact Number</th>
-            <th>Email</th>
-            <th>Address</th>
-            <th>Tax ID/GSTIN</th>
-            <th>MOQ</th>
-            <th>Total Amount (₹)</th>
-            <th>Udhari (₹)</th>
-            <th>Items Sold</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="wholesalerTableBody"></tbody>
-      </table>
-
-      <!-- Modal for Create/Edit Wholesaler -->
-      <div id="wholesalerModal" class="modal">
-        <div class="modal-content">
-          <span id="closeModal" class="close">×</span>
-          <h2 id="modalTitle">Create Wholesaler</h2>
-          <form id="wholesalerForm">
-            <input type="hidden" id="wholesalerId" />
-            <div class="form-group">
-              <label for="wholesalerName">Name:</label>
-              <input type="text" id="wholesalerName" required />
-            </div>
-            <div class="form-group">
-              <label for="contactNumber">Contact Number:</label>
-              <input type="text" id="contactNumber" required />
-            </div>
-            <div class="form-group">
-              <label for="wholesalerEmail">Email:</label>
-              <input type="email" id="wholesalerEmail" />
-            </div>
-            <div class="form-group">
-              <label for="wholesalerAddress">Address:</label>
-              <input type="text" id="wholesalerAddress" />
-            </div>
-            <div class="form-group">
-              <label for="wholesalerTaxId">Tax ID/GSTIN:</label>
-              <input type="text" id="wholesalerTaxId" />
-            </div>
-            <div class="form-group">
-              <label for="wholesalerMOQ">Minimum Order Quantity (MOQ):</label>
-              <input type="number" id="wholesalerMOQ" min="0" />
-            </div>
-            <div class="form-group">
-              <label for="totalAmount">Total Amount (₹):</label>
-              <input type="number" id="totalAmount" step="0.01" value="0.0" />
-            </div>
-            <div class="form-group">
-              <label for="udhari">Udhari (₹):</label>
-              <input type="number" id="udhari" step="0.01" value="0.0" />
-            </div>
-            <div class="form-group">
-              <label for="specialtyProduct">Specialty Product:</label>
-              <input type="text" id="specialtyProduct" />
-            </div>
-            <button
-              type="submit"
-              id="saveWholesalerBtn"
-              class="action-btn save-btn"
-            >
-              Save
-            </button>
-          </form>
+        <h2>Wholesaler List</h2>
+        <div class="form-container">
+            <form id="wholesalerForm">
+                <input type="hidden" id="wholesalerId" />
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="wholesalerName">Name:</label>
+                        <input type="text" id="wholesalerName" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="contactNumber">Contact Number:</label>
+                        <input type="text" id="contactNumber" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="wholesalerEmail">Email:</label>
+                        <input type="email" id="wholesalerEmail" />
+                    </div>
+                    <div class="form-group">
+                        <label for="wholesalerAddress">Address:</label>
+                        <input type="text" id="wholesalerAddress" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="wholesalerTaxId">Tax ID/GSTIN:</label>
+                        <input type="text" id="wholesalerTaxId" />
+                    </div>
+                    <div class="form-group">
+                        <label for="wholesalerMOQ">Minimum Order Quantity (MOQ):</label>
+                        <input type="number" id="wholesalerMOQ" min="0" />
+                    </div>
+                    <div class="form-group">
+                        <label for="totalAmount">Total Amount (₹):</label>
+                        <input type="number" id="totalAmount" step="0.01" value="0.0" />
+                    </div>
+                    <div class="form-group">
+                        <label for="udhari">Udhari (₹):</label>
+                        <input type="number" id="udhari" step="0.01" value="0.0" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="specialtyProduct">Specialty Product:</label>
+                        <input type="text" id="specialtyProduct" />
+                    </div>
+                    <div class="form-group">
+                        <label for="createdAt">Date of Creation:</label>
+                        <input type="date" id="createdAt" required />
+                    </div>
+                </div>
+                <button type="submit" id="createWholesalerBtn" class="action-btn create-btn">Create Wholesaler</button>
+            </form>
         </div>
-      </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search by Wholesaler ID" />
+            <input type="text" id="searchByNameContact" placeholder="Search by Name or Mobile" />
+        </div>
+        <div class="wholesaler-table-container">
+            <table id="wholesalerTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Contact Number</th>
+                        <th>Tax ID/GSTIN</th>
+                        <th>Date of Creation</th>
+                        <th>Udhari (₹)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="wholesalerTableBody"></tbody>
+            </table>
+        </div>
+        <!-- Modal for Edit Wholesaler -->
+        <div id="wholesalerModal" class="modal">
+            <div class="modal-content">
+                <span id="closeModal" class="close">×</span>
+                <h2 id="modalTitle">Edit Wholesaler</h2>
+                <form id="editWholesalerForm">
+                    <input type="hidden" id="wholesalerId" />
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="wholesalerName">Name:</label>
+                            <input type="text" id="wholesalerName" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="contactNumber">Contact Number:</label>
+                            <input type="text" id="contactNumber" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="wholesalerEmail">Email:</label>
+                            <input type="email" id="wholesalerEmail" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="wholesalerAddress">Address:</label>
+                            <input type="text" id="wholesalerAddress" />
+                        </div>
+                        <div class="form-group">
+                            <label for="wholesalerTaxId">Tax ID/GSTIN:</label>
+                            <input type="text" id="wholesalerTaxId" />
+                        </div>
+                        <div class="form-group">
+                            <label for="wholesalerMOQ">Minimum Order Quantity (MOQ):</label>
+                            <input type="number" id="wholesalerMOQ" min="0" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="totalAmount">Total Amount (₹):</label>
+                            <input type="number" id="totalAmount" step="0.01" value="0.0" />
+                        </div>
+                        <div class="form-group">
+                            <label for="udhari">Udhari (₹):</label>
+                            <input type="number" id="udhari" step="0.01" value="0.0" />
+                        </div>
+                        <div class="form-group">
+                            <label for="specialtyProduct">Specialty Product:</label>
+                            <input type="text" id="specialtyProduct" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="createdAt">Date of Creation:</label>
+                            <input type="date" id="createdAt" required />
+                        </div>
+                    </div>
+                    <button type="submit" id="saveWholesalerBtn" class="action-btn save-btn">Save</button>
+                </form>
+            </div>
+        </div>
     </div>
-    <script src="wholesalers.js"></script>
-  </body>
+    <script src="Wholesellerlist.js"></script>
+</body>
 </html>
