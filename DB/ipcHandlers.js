@@ -1,39 +1,30 @@
 const { ipcMain, app, BrowserWindow } = require("electron");
+
 const path = require("path");
+
 const Database = require("better-sqlite3");
 
 // Create or open the SQLite DB
 const dbPath = path.join(__dirname, "inventory.db");
 const db = new Database(dbPath);
 
-// Migration: Merge remaining_amount_to_pay into udhari and drop the column
+// Migration: Merge remaining_amount_to_pay into udhari and drop the column if it exists
 try {
-  // Check if remaining_amount_to_pay exists
   const columns = db.prepare("PRAGMA table_info(wholesalers)").all();
-  const hasRemainingAmount = columns.some(
-    (col) => col.name === "remaining_amount_to_pay"
-  );
+  const hasRemainingAmount = columns.some(col => col.name === "remaining_amount_to_pay");
   if (hasRemainingAmount) {
-    // Update udhari with remaining_amount_to_pay where non-zero
     db.prepare(
       `
       UPDATE wholesalers
       SET udhari = COALESCE(udhari, 0.0) + COALESCE(remaining_amount_to_pay, 0.0)
       WHERE remaining_amount_to_pay IS NOT NULL AND remaining_amount_to_pay != 0.0
-    `
+      `
     ).run();
     console.log("Merged remaining_amount_to_pay into udhari");
-    // Drop remaining_amount_to_pay
-    db.prepare(
-      "ALTER TABLE wholesalers DROP COLUMN remaining_amount_to_pay"
-    ).run();
-    console.log(
-      "Dropped remaining_amount_to_pay column from wholesalers table"
-    );
+    db.prepare("ALTER TABLE wholesalers DROP COLUMN remaining_amount_to_pay").run();
+    console.log("Dropped remaining_amount_to_pay column from wholesalers table");
   } else {
-    console.log(
-      "remaining_amount_to_pay column does not exist in wholesalers table"
-    );
+    console.log("remaining_amount_to_pay column does not exist in wholesalers table, skipping migration");
   }
 } catch (err) {
   console.error("Error during remaining_amount_to_pay migration:", err);
@@ -158,6 +149,65 @@ db.prepare(
     FOREIGN KEY (customer_id) REFERENCES customers(id),
     FOREIGN KEY (bill_id) REFERENCES bills(id),
     FOREIGN KEY (item_id) REFERENCES items(id)
+  )
+`
+).run();
+
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS wholesaler_purchases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wholesaler_id INTEGER NOT NULL,
+    invoice_number TEXT UNIQUE,
+    total_cost REAL NOT NULL,
+    amount_paid REAL NOT NULL,
+    discount REAL DEFAULT 0.0,
+    payment_method TEXT NOT NULL,
+    purchase_date TEXT DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    FOREIGN KEY (wholesaler_id) REFERENCES wholesalers(id)
+  )
+`
+).run();
+
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS wholesaler_purchase_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    purchase_id INTEGER NOT NULL,
+    item_id INTEGER,
+    quantity INTEGER NOT NULL,
+    buying_cost REAL NOT NULL,
+    total REAL NOT NULL,
+    barcode TEXT NOT NULL,
+    name TEXT NOT NULL,
+    gst_percentage REAL,
+    selling_cost REAL,
+    mrp REAL,
+    unit TEXT NOT NULL,
+    FOREIGN KEY (purchase_id) REFERENCES wholesaler_purchases(id),
+    FOREIGN KEY (item_id) REFERENCES items(id)
+  )
+`
+).run();
+
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS wholesaler_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wholesaler_id INTEGER NOT NULL,
+    purchase_id INTEGER,
+    amount REAL NOT NULL,
+    type TEXT NOT NULL,
+    createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+    invoice_number TEXT,
+    total_cost REAL,
+    amount_paid REAL,
+    discount REAL,
+    payment_method TEXT,
+    notes TEXT,
+    FOREIGN KEY (wholesaler_id) REFERENCES wholesalers(id),
+    FOREIGN KEY (purchase_id) REFERENCES wholesaler_purchases(id)
   )
 `
 ).run();
@@ -343,11 +393,9 @@ ipcMain.handle("billing:saveBill", (event, billData) => {
     VALUES (?, ?, ?, ?)
   `);
   const transaction = db.transaction((bill) => {
-    // Validate customer for udhari
     if (bill.isDebt && !bill.customer_id) {
       throw new Error("Customer ID is required for udhari transactions");
     }
-    // Check stock for each item
     for (const item of bill.totalItems) {
       const row = getStockStmt.get(item.barcode);
       if (!row) {
@@ -359,12 +407,10 @@ ipcMain.handle("billing:saveBill", (event, billData) => {
         );
       }
     }
-    // Use provided values and round to two decimal places
     const totalCost = Number(bill.totalCost.toFixed(2));
     const amountPaid = bill.isDebt ? 0 : Number(bill.amountPaid.toFixed(2));
     const change = bill.isDebt ? 0 : Number(bill.change.toFixed(2));
     const discount = Number(bill.discount.toFixed(2)) || 0;
-    // Validate numerical values
     if (isNaN(totalCost))
       throw new Error("Invalid totalCost: must be a valid number");
     if (isNaN(amountPaid))
@@ -378,7 +424,6 @@ ipcMain.handle("billing:saveBill", (event, billData) => {
         "Total cost, amount paid, change, and discount must be non-negative"
       );
     }
-    // Insert the bill
     const billId = insertBillStmt.run(
       bill.customer_id || null,
       bill.paymentMethod || "N/A",
@@ -387,7 +432,6 @@ ipcMain.handle("billing:saveBill", (event, billData) => {
       discount,
       totalCost
     ).lastInsertRowid;
-    // Insert bill items
     for (const item of bill.totalItems) {
       insertBillItemStmt.run(
         billId,
@@ -398,7 +442,6 @@ ipcMain.handle("billing:saveBill", (event, billData) => {
       );
       updateStockStmt.run(item.quantity, item.barcode);
     }
-    // Record udhari if debt
     if (bill.isDebt) {
       insertUdhariStmt.run(bill.customer_id, billId, -totalCost, "debt");
       db.prepare("UPDATE customers SET udhari = udhari + ? WHERE id = ?").run(
@@ -406,7 +449,6 @@ ipcMain.handle("billing:saveBill", (event, billData) => {
         bill.customer_id
       );
     }
-    // Notify all open windows of the new bill
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send("billing:newBill", {
         id: billId,
@@ -722,7 +764,7 @@ ipcMain.handle("wholesalers:checkContactNumber", (event, contact_number) => {
 ipcMain.handle("wholesalers:getWholesalerItems", (event, wholesalerId) => {
   try {
     const stmt = db.prepare(`
-      SELECT i.id, i.name
+      SELECT i.id, i.name, i.barcode, i.gstPercentage, i.buyingCost, i.sellingCost, i.MRP, i.stock, i.unit
       FROM wholesaler_items wi
       JOIN items i ON wi.item_id = i.id
       WHERE wi.wholesaler_id = ?
@@ -731,6 +773,206 @@ ipcMain.handle("wholesalers:getWholesalerItems", (event, wholesalerId) => {
   } catch (err) {
     console.error("Error fetching wholesaler items:", err);
     throw new Error("Failed to fetch wholesaler items");
+  }
+});
+
+// Save wholesaler purchase
+ipcMain.handle("wholesalerPurchases:savePurchase", (event, purchaseData) => {
+  const insertPurchaseStmt = db.prepare(`
+    INSERT INTO wholesaler_purchases (wholesaler_id, invoice_number, total_cost, amount_paid, discount, payment_method, purchase_date, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertPurchaseItemStmt = db.prepare(`
+    INSERT INTO wholesaler_purchase_items (purchase_id, item_id, quantity, buying_cost, total, barcode, name, gst_percentage, selling_cost, mrp, unit)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertItemStmt = db.prepare(`
+    INSERT INTO items (name, barcode, gstPercentage, buyingCost, sellingCost, MRP, stock, unit)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const updateItemStmt = db.prepare(`
+    UPDATE items SET stock = stock + ?, buyingCost = ?, sellingCost = ?, MRP = ?, gstPercentage = ?, unit = ?
+    WHERE barcode = ?
+  `);
+  const insertHistoryStmt = db.prepare(`
+    INSERT INTO wholesaler_history (wholesaler_id, purchase_id, amount, type, createdAt, invoice_number, total_cost, amount_paid, discount, payment_method, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const updateWholesalerStmt = db.prepare(`
+    UPDATE wholesalers SET total_amount = total_amount + ?, udhari = udhari + ? WHERE id = ?
+  `);
+  const insertWholesalerItemStmt = db.prepare(`
+    INSERT OR IGNORE INTO wholesaler_items (wholesaler_id, item_id)
+    VALUES (?, ?)
+  `);
+  const transaction = db.transaction((purchase) => {
+    if (!purchase.wholesaler_id) {
+      throw new Error("Wholesaler ID is required");
+    }
+    if (!purchase.totalItems || purchase.totalItems.length === 0) {
+      throw new Error("At least one item is required");
+    }
+    const totalCost = Number(purchase.totalCost.toFixed(2));
+    const amountPaid = purchase.isDebt ? 0 : Number(purchase.amountPaid.toFixed(2));
+    const discount = Number(purchase.discount.toFixed(2)) || 0;
+    const debtAmount = totalCost - amountPaid;
+    if (isNaN(totalCost) || totalCost < 0) {
+      throw new Error("Invalid total cost");
+    }
+    if (isNaN(amountPaid) || amountPaid < 0) {
+      throw new Error("Invalid amount paid");
+    }
+    if (isNaN(discount) || discount < 0) {
+      throw new Error("Invalid discount");
+    }
+    const purchaseId = insertPurchaseStmt.run(
+      purchase.wholesaler_id,
+      purchase.invoice_number || null,
+      totalCost,
+      amountPaid,
+      discount,
+      purchase.paymentMethod || "N/A",
+      purchase.purchase_date || new Date().toISOString(),
+      purchase.notes || null
+    ).lastInsertRowid;
+    for (const item of purchase.totalItems) {
+      let itemId = item.id;
+      const existingItem = db.prepare(`SELECT id FROM items WHERE barcode = ?`).get(item.barcode);
+      if (!existingItem) {
+        itemId = insertItemStmt.run(
+          item.name,
+          item.barcode,
+          item.gst_percentage,
+          item.buying_cost,
+          item.selling_cost,
+          item.mrp,
+          item.quantity,
+          item.unit
+        ).lastInsertRowid;
+      } else {
+        updateItemStmt.run(
+          item.quantity,
+          item.buying_cost,
+          item.selling_cost,
+          item.mrp,
+          item.gst_percentage,
+          item.unit,
+          item.barcode
+        );
+        itemId = existingItem.id;
+      }
+      insertPurchaseItemStmt.run(
+        purchaseId,
+        itemId,
+        item.quantity,
+        item.buying_cost,
+        item.total,
+        item.barcode,
+        item.name,
+        item.gst_percentage,
+        item.selling_cost,
+        item.mrp,
+        item.unit
+      );
+      insertWholesalerItemStmt.run(purchase.wholesaler_id, itemId);
+    }
+    updateWholesalerStmt.run(totalCost, debtAmount, purchase.wholesaler_id);
+    insertHistoryStmt.run(
+      purchase.wholesaler_id,
+      purchaseId,
+      -totalCost,
+      purchase.isDebt ? "debt" : "purchase",
+      purchase.purchase_date || new Date().toISOString(),
+      purchase.invoice_number || null,
+      totalCost,
+      amountPaid,
+      discount,
+      purchase.paymentMethod || "N/A",
+      purchase.notes || null
+    );
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send("wholesalerPurchases:newPurchase", {
+        id: purchaseId,
+        wholesaler_id: purchase.wholesaler_id,
+        totalItems: purchase.totalItems,
+        totalCost,
+        discount,
+        amountPaid,
+        paymentMethod: purchase.paymentMethod || "N/A",
+        invoice_number: purchase.invoice_number || "N/A",
+        purchase_date: purchase.purchase_date || new Date().toISOString(),
+        notes: purchase.notes || "N/A",
+      });
+    });
+    return purchaseId;
+  });
+  try {
+    console.log("Processing purchase:", purchaseData);
+    const purchaseId = transaction(purchaseData);
+    console.log("Purchase saved successfully with ID:", purchaseId);
+    return { success: true, purchaseId };
+  } catch (err) {
+    console.error("Purchase transaction failed:", err.message, err.stack);
+    return { success: false, error: err.message };
+  }
+});
+
+// GET wholesaler purchases
+ipcMain.handle("wholesalerPurchases:getPurchases", () => {
+  try {
+    const purchases = db
+      .prepare(
+        `
+      SELECT wp.id, wp.wholesaler_id, wp.invoice_number, wp.total_cost, wp.amount_paid, wp.discount, wp.payment_method, wp.purchase_date, wp.notes,
+             w.name AS wholesaler_name, w.contact_number AS wholesaler_contact
+      FROM wholesaler_purchases wp
+      JOIN wholesalers w ON wp.wholesaler_id = w.id
+      ORDER BY wp.purchase_date DESC
+    `
+      )
+      .all();
+    const purchaseItemsStmt = db.prepare(`
+      SELECT wpi.quantity, wpi.buying_cost, wpi.total, wpi.name, wpi.unit, wpi.barcode
+      FROM wholesaler_purchase_items wpi
+      WHERE wpi.purchase_id = ?
+    `);
+    return purchases.map((purchase) => {
+      const items = purchaseItemsStmt.all(purchase.id);
+      return {
+        id: purchase.id,
+        wholesaler_id: purchase.wholesaler_id,
+        wholesaler_name: purchase.wholesaler_name,
+        wholesaler_contact: purchase.wholesaler_contact,
+        invoice_number: purchase.invoice_number || "N/A",
+        purchase_date: purchase.purchase_date,
+        data: JSON.stringify({
+          totalItems: items,
+          totalCost: purchase.total_cost,
+          amountPaid: purchase.amount_paid,
+          discount: purchase.discount || 0,
+          paymentMethod: purchase.payment_method || "N/A",
+          notes: purchase.notes || "N/A",
+        }),
+      };
+    });
+  } catch (err) {
+    console.error("Error fetching purchases:", err);
+    throw new Error("Failed to fetch purchases");
+  }
+});
+
+// GET purchase items for a purchase
+ipcMain.handle("wholesalerPurchases:getPurchaseItems", (event, purchaseId) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT wpi.quantity, wpi.buying_cost, wpi.total, wpi.name, wpi.unit, wpi.barcode
+      FROM wholesaler_purchase_items wpi
+      WHERE wpi.purchase_id = ?
+    `);
+    return stmt.all(purchaseId);
+  } catch (err) {
+    console.error("Error fetching purchase items:", err);
+    throw new Error("Failed to fetch purchase items");
   }
 });
 
@@ -760,8 +1002,6 @@ ipcMain.handle("returns:addReturn", (event, returnData) => {
   `);
   const transaction = db.transaction((data) => {
     console.log('Validating return data:', data);
-
-    // Validate inputs
     if (!data.mobile_number || !data.barcode || !data.bill_id || !data.quantity || !data.refund_amount || !data.createdAt) {
       console.error('Missing required fields');
       throw new Error("All required fields must be provided");
@@ -770,24 +1010,20 @@ ipcMain.handle("returns:addReturn", (event, returnData) => {
       console.error('Invalid quantity or refund amount');
       throw new Error("Quantity and refund amount must be positive");
     }
-    // Validate date format
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data.createdAt)) {
       console.error('Invalid date format:', data.createdAt);
       throw new Error("Invalid date format");
     }
-    // Get customer ID
     const customer = getCustomerStmt.get(data.mobile_number);
     if (!customer) {
       console.error('Customer not found for mobile:', data.mobile_number);
       throw new Error("Customer not found");
     }
-    // Get item ID
     const item = getItemStmt.get(data.barcode);
     if (!item) {
       console.error('Item not found for barcode:', data.barcode);
       throw new Error("Item not found");
     }
-    // Verify bill exists and matches customer
     const bill = getBillStmt.get(data.bill_id);
     if (!bill) {
       console.error('Bill not found for ID:', data.bill_id);
@@ -797,13 +1033,11 @@ ipcMain.handle("returns:addReturn", (event, returnData) => {
       console.error('Bill customer mismatch. Bill customer_id:', bill.customer_id, 'Customer ID:', customer.id);
       throw new Error("Bill does not belong to this customer");
     }
-    // Check for duplicate return
     const existingReturn = checkDuplicateStmt.get(data.bill_id, item.id);
     if (existingReturn) {
       console.error('Duplicate return found for bill_id:', data.bill_id, 'item_id:', item.id);
       throw new Error("This item has already been returned for this bill");
     }
-    // Verify purchase
     const billItem = getBillItemStmt.get(data.bill_id, item.id);
     if (!billItem) {
       console.error('No purchase found for bill_id:', data.bill_id, 'item_id:', item.id);
@@ -817,7 +1051,6 @@ ipcMain.handle("returns:addReturn", (event, returnData) => {
       console.error(`Refund amount exceeds purchased. Requested: ${data.refund_amount}, Purchased: ${billItem.total}`);
       throw new Error(`Requested refund amount (₹${data.refund_amount}) exceeds original purchase amount (₹${billItem.total})`);
     }
-    // Insert return record
     const returnId = insertReturnStmt.run(
       customer.id,
       data.bill_id,
@@ -828,7 +1061,6 @@ ipcMain.handle("returns:addReturn", (event, returnData) => {
       data.createdAt
     ).lastInsertRowid;
     console.log('Inserted return with ID:', returnId);
-    // Update inventory stock
     updateStockStmt.run(data.quantity, item.id);
     console.log('Updated stock for item_id:', item.id, 'by quantity:', data.quantity);
     return returnId;
@@ -837,7 +1069,6 @@ ipcMain.handle("returns:addReturn", (event, returnData) => {
     console.log("Processing return:", returnData);
     const returnId = transaction(returnData);
     console.log("Return saved successfully with ID:", returnId);
-    // Notify all open windows
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send("returns:newReturn", {
         id: returnId,
@@ -890,31 +1121,26 @@ ipcMain.handle("returns:editReturn", (event, returnData) => {
     UPDATE items SET stock = stock + ? WHERE id = ?
   `);
   const transaction = db.transaction((data) => {
-    // Validate inputs
     if (!data.id || !data.item_name || !data.quantity || !data.refund_amount) {
       throw new Error("All required fields must be provided");
     }
     if (data.quantity <= 0 || data.refund_amount <= 0) {
       throw new Error("Quantity and refund amount must be positive");
     }
-    // Get current return details
     const currentReturn = getReturnStmt.get(data.id);
     if (!currentReturn) {
       throw new Error("Return not found");
     }
-    // Get item ID
     const item = getItemStmt.get(data.item_name);
     if (!item) {
       throw new Error("Item not found");
     }
-    // Check for duplicate return (if item changed)
     if (item.id !== currentReturn.item_id) {
       const existingReturn = checkDuplicateStmt.get(currentReturn.bill_id, item.id, data.id);
       if (existingReturn) {
         throw new Error("This item has already been returned for this bill");
       }
     }
-    // Verify purchase
     const billItem = getBillItemStmt.get(currentReturn.customer_id, item.id, currentReturn.bill_id);
     if (!billItem) {
       throw new Error("No purchase found for this customer, item, and bill");
@@ -925,14 +1151,12 @@ ipcMain.handle("returns:editReturn", (event, returnData) => {
     if (billItem.total < data.refund_amount) {
       throw new Error(`Requested refund amount (₹${data.refund_amount}) exceeds original purchase amount (₹${billItem.total})`);
     }
-    // Update return record
     updateReturnStmt.run(
       item.id,
       data.quantity,
       data.refund_amount,
       data.id
     );
-    // Adjust inventory stock (add difference: new quantity - old quantity)
     const stockAdjustment = data.quantity - currentReturn.old_quantity;
     updateStockStmt.run(stockAdjustment, item.id);
   });
@@ -940,7 +1164,6 @@ ipcMain.handle("returns:editReturn", (event, returnData) => {
     console.log("Editing return:", returnData);
     transaction(returnData);
     console.log("Return edited successfully with ID:", returnData.id);
-    // Notify all open windows
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send("returns:updatedReturn", {
         id: returnData.id,
@@ -973,21 +1196,17 @@ ipcMain.handle("returns:deleteReturn", (event, id) => {
     UPDATE items SET stock = stock - ? WHERE id = ?
   `);
   const transaction = db.transaction((id) => {
-    // Get return details
     const returnItem = getReturnStmt.get(id);
     if (!returnItem) {
       throw new Error("Return not found");
     }
-    // Delete return record
     deleteReturnStmt.run(id);
-    // Restore inventory stock (subtract returned quantity)
     updateStockStmt.run(returnItem.quantity, returnItem.item_id);
   });
   try {
     console.log("Deleting return with ID:", id);
     transaction(id);
     console.log("Return deleted successfully");
-    // Notify all open windows
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send("returns:deletedReturn", { id });
     });
@@ -1088,5 +1307,27 @@ ipcMain.handle("returns:getBillItemsForReturn", (event, billId) => {
   } catch (err) {
     console.error("Error fetching bill items for return:", err);
     throw new Error("Failed to fetch bill items for return");
+  }
+});
+
+ipcMain.handle("inventory:getItemByBarcode", (event, barcode) => {
+  try {
+    console.log('Received barcode query:', barcode);
+    const query = `
+      SELECT id, name, barcode, gstPercentage, buyingCost, sellingCost, MRP, stock, unit
+      FROM items
+      WHERE barcode = ?
+    `;
+    console.log('Executing query:', query);
+    const item = db.prepare(query).get(barcode);
+    console.log('Query result:', item);
+    return item || null;
+  } catch (err) {
+    console.error('Error in inventory:getItemByBarcode:', {
+      message: err.message,
+      stack: err.stack,
+      barcode: barcode,
+    });
+    throw new Error(`Failed to fetch item by barcode: ${err.message}`);
   }
 });
