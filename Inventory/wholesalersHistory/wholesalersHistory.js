@@ -1,27 +1,27 @@
 const { ipcRenderer } = require('electron');
 
-let currentlyOpenWholesalerId = null;
-let wholesalers = [];
+let currentlyOpenPurchaseId = null;
+let purchases = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Wholesalers History page loaded');
-  loadWholesalers();
+  loadPurchases();
 
   // Combined search functionality
   const applyFilters = () => {
     const searchIdTerm = document.getElementById('searchInput').value.toLowerCase();
     const searchNameContactTerm = document.getElementById('searchByNameContact').value.toLowerCase();
-    const rows = document.querySelectorAll('#wholesalersTableBody tr:not(.details-row)');
+    const rows = document.querySelectorAll('#purchasesTableBody tr:not(.details-row)');
 
     rows.forEach(row => {
-      const wholesalerId = row.cells[0].textContent.toLowerCase();
-      const name = row.cells[1].textContent.toLowerCase();
-      const contactNumber = row.cells[2].textContent.toLowerCase();
+      const purchaseId = row.cells[0].textContent.toLowerCase();
+      const wholesalerName = row.cells[1].textContent.toLowerCase();
+      const wholesalerContact = row.cells[2].textContent.toLowerCase();
       const detailsRow = row.nextElementSibling?.classList.contains('details-row') ? row.nextElementSibling : null;
 
-      const matchesId = searchIdTerm ? wholesalerId.includes(searchIdTerm) : true;
+      const matchesId = searchIdTerm ? purchaseId.includes(searchIdTerm) : true;
       const matchesNameContact = searchNameContactTerm
-        ? (name.includes(searchNameContactTerm) || contactNumber.includes(searchNameContactTerm))
+        ? (wholesalerName.includes(searchNameContactTerm) || wholesalerContact.includes(searchNameContactTerm))
         : true;
       const shouldDisplay = matchesId && matchesNameContact;
 
@@ -36,134 +36,175 @@ document.addEventListener('DOMContentLoaded', () => {
   // Search by Name or Contact Number
   document.getElementById('searchByNameContact').addEventListener('input', applyFilters);
 
-  // Listen for new wholesalers
-  ipcRenderer.on('wholesalers:newWholesaler', (event, newWholesaler) => {
-    console.log('Received new wholesaler via IPC:', newWholesaler);
-    wholesalers.push(newWholesaler);
-    renderWholesalerRow(newWholesaler);
-    applyFilters(); // Apply filters to new wholesaler
+  // Listen for new purchases
+  ipcRenderer.on('wholesalerPurchases:newPurchase', (event, newPurchase) => {
+    console.log('Received new purchase via IPC:', newPurchase);
+    purchases.push(newPurchase);
+    renderPurchaseRow(newPurchase);
+    applyFilters(); // Apply filters to new purchase
   });
 });
 
-async function loadWholesalers() {
+async function loadPurchases() {
   try {
-    wholesalers = await ipcRenderer.invoke('wholesalers:getWholesalers');
-    console.log('Fetched wholesalers:', wholesalers);
+    purchases = await ipcRenderer.invoke('wholesalerPurchases:getPurchases');
+    console.log('Fetched purchases:', purchases);
 
-    // Filter out wholesalers with invalid data
-    wholesalers = wholesalers.filter(wholesaler => {
+    // Filter out purchases with invalid data
+    purchases = purchases.filter(purchase => {
       try {
-        return typeof wholesaler.total_amount === 'number' &&
-               typeof wholesaler.payment_method === 'string';
+        const purchaseData = JSON.parse(purchase.data);
+        return purchaseData && typeof purchaseData.totalCost === 'number' && typeof purchaseData.discount === 'number' &&
+               typeof purchaseData.amountPaid === 'number';
       } catch (error) {
-        console.error(`Invalid wholesaler data for ID ${wholesaler.id}:`, error);
+        console.error(`Invalid purchase data for purchase ID ${purchase.id}:`, purchase.data, error);
         return false;
       }
     });
 
-    console.log('Filtered wholesalers:', wholesalers);
-    const tableBody = document.getElementById('wholesalersTableBody');
+    console.log('Filtered purchases:', purchases);
+    const tableBody = document.getElementById('purchasesTableBody');
     tableBody.innerHTML = '';
-    wholesalers.forEach(wholesaler => renderWholesalerRow(wholesaler));
+    purchases.forEach(purchase => renderPurchaseRow(purchase));
   } catch (error) {
-    console.error('Error loading wholesalers:', error);
+    console.error('Error loading purchases:', error);
   }
 }
 
-function renderWholesalerRow(wholesaler) {
-  // Ensure numerical values with fallbacks
-  const totalAmount = typeof wholesaler.total_amount === 'number' ? wholesaler.total_amount.toFixed(2) : '0.00';
-  const paymentMethod = wholesaler.payment_method || 'N/A';
+function renderPurchaseRow(purchase) {
+  let purchaseData;
+  try {
+    purchaseData = JSON.parse(purchase.data);
+    console.log(`Parsed purchase data for purchase ID ${purchase.id}:`, purchaseData);
+  } catch (error) {
+    console.error(`Failed to parse purchase data for purchase ID ${purchase.id}:`, purchase.data, error);
+    return; // Skip rendering this purchase
+  }
 
-  const tableBody = document.getElementById('wholesalersTableBody');
+  // Ensure numerical values with fallbacks
+  const totalCost = typeof purchaseData.totalCost === 'number' ? purchaseData.totalCost.toFixed(2) : '0.00';
+  const discount = typeof purchaseData.discount === 'number' ? purchaseData.discount.toFixed(2) : '0.00';
+  const amountPaid = typeof purchaseData.amountPaid === 'number' ? purchaseData.amountPaid.toFixed(2) : '0.00';
+
+  // Format the date to DD-MM-YYYY HH:MM:SS
+  const date = new Date(purchase.purchase_date);
+  const formattedDate = `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+
+  const tableBody = document.getElementById('purchasesTableBody');
   const row = document.createElement('tr');
-  row.dataset.wholesalerId = wholesaler.id;
+  row.dataset.purchaseId = purchase.id;
   row.innerHTML = `
-    <td>${wholesaler.id}</td>
-    <td>${wholesaler.name || 'N/A'}</td>
-    <td>${wholesaler.contact_number || 'N/A'}</td>
-    <td>₹${totalAmount}</td>
-    <td>${paymentMethod}</td>
+    <td>${purchase.id}</td>
+    <td>${purchase.wholesaler_name || 'N/A'}</td>
+    <td>${purchase.wholesaler_contact || 'N/A'}</td>
+    <td>${purchaseData.totalItems?.length || 0}</td>
+    <td>${purchaseData.paymentMethod || 'N/A'}</td>
+    <td>₹${discount}</td>
+    <td>₹${totalCost}</td>
+    <td>₹${amountPaid}</td>
+    <td>${formattedDate}</td>
   `;
 
-  row.addEventListener('click', () => toggleWholesalerDetails(row, wholesaler.id, wholesaler));
+  row.addEventListener('click', () => togglePurchaseDetails(row, purchase.id, purchase));
   tableBody.appendChild(row);
-  console.log(`Rendered row for wholesaler ID ${wholesaler.id}`);
+  console.log(`Rendered row for purchase ID ${purchase.id}`);
 }
 
-async function toggleWholesalerDetails(row, wholesalerId, wholesaler) {
-  // Check if there's already a details row for this wholesaler
+async function togglePurchaseDetails(row, purchaseId, purchase) {
+  // Check if there's already a details row for this purchase
   let detailsRow = row.nextElementSibling;
   if (detailsRow && detailsRow.classList.contains('details-row')) {
     detailsRow.remove();
-    currentlyOpenWholesalerId = null;
+    currentlyOpenPurchaseId = null;
     return;
   }
 
-  // If another wholesaler's details are open, close them
-  if (currentlyOpenWholesalerId !== null) {
-    const openRow = document.querySelector(`tr[data-wholesaler-id="${currentlyOpenWholesalerId}"]`);
+  // If another purchase's details are open, close them
+  if (currentlyOpenPurchaseId !== null) {
+    const openRow = document.querySelector(`tr[data-purchase-id="${currentlyOpenPurchaseId}"]`);
     if (openRow && openRow.nextElementSibling?.classList.contains('details-row')) {
       openRow.nextElementSibling.remove();
     }
   }
 
-  // Update the currently open wholesaler ID
-  currentlyOpenWholesalerId = wholesalerId;
+  // Update the currently open purchase ID
+  currentlyOpenPurchaseId = purchaseId;
+
+  // Parse purchase data
+  let purchaseData;
+  try {
+    purchaseData = JSON.parse(purchase.data);
+  } catch (error) {
+    console.error(`Failed to parse purchase data for purchase ID ${purchase.id}:`, purchase.data, error);
+    return;
+  }
 
   // Ensure numerical values with fallbacks
-  const totalAmount = typeof wholesaler.total_amount === 'number' ? wholesaler.total_amount.toFixed(2) : '0.00';
-  const paymentMethod = wholesaler.payment_method || 'N/A';
+  const totalCost = typeof purchaseData.totalCost === 'number' ? purchaseData.totalCost.toFixed(2) : '0.00';
+  const discount = typeof purchaseData.discount === 'number' ? purchaseData.discount.toFixed(2) : '0.00';
+  const amountPaid = typeof purchaseData.amountPaid === 'number' ? purchaseData.amountPaid.toFixed(2) : '0.00';
 
-  // Fetch associated items
-  let items = [];
-  try {
-    items = await ipcRenderer.invoke('wholesalers:getWholesalerItems', wholesalerId);
-  } catch (error) {
-    console.error('Error fetching wholesaler items:', error);
-  }
+  // Format the date for the details section
+  const date = new Date(purchase.purchase_date);
+  const formattedDate = `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
 
   detailsRow = document.createElement('tr');
   detailsRow.classList.add('details-row');
   const detailsCell = document.createElement('td');
-  detailsCell.colSpan = 5;
+  detailsCell.colSpan = 9; // Adjusted colspan to match new column count
   detailsCell.innerHTML = `
-    <div class="wholesaler-details">
+    <div class="purchase-details">
       <table class="summary-table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Contact Number</th>
-            <th>Total Amount</th>
+            <th>Purchase ID</th>
+            <th>Date</th>
+            <th>Wholesaler Name</th>
+            <th>Wholesaler Contact</th>
+            <th>Invoice Number</th>
             <th>Payment Method</th>
+            <th>Discount</th>
+            <th>Total Cost</th>
+            <th>Amount Paid</th>
+            <th>Notes</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>${wholesaler.id}</td>
-            <td>${wholesaler.name || 'N/A'}</td>
-            <td>${wholesaler.contact_number || 'N/A'}</td>
-            <td>₹${totalAmount}</td>
-            <td>${paymentMethod}</td>
+            <td>${purchase.id}</td>
+            <td>${formattedDate}</td>
+            <td>${purchase.wholesaler_name || 'N/A'}</td>
+            <td>${purchase.wholesaler_contact || 'N/A'}</td>
+            <td>${purchaseData.invoice_number || 'N/A'}</td>
+            <td>${purchaseData.paymentMethod || 'N/A'}</td>
+            <td>₹${discount}</td>
+            <td>₹${totalCost}</td>
+            <td>₹${amountPaid}</td>
+            <td>${purchaseData.notes || 'N/A'}</td>
           </tr>
         </tbody>
       </table>
-      <h3>Associated Items</h3>
+      <h3>Items</h3>
       <table class="items-table">
         <thead>
           <tr>
-            <th>Item ID</th>
+            <th>Barcode</th>
             <th>Item Name</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Measure</th>
           </tr>
         </thead>
         <tbody>
-          ${items.length > 0 ? items.map(item => `
+          ${purchaseData.totalItems?.map(item => `
             <tr>
-              <td>${item.id}</td>
-              <td>${item.name || 'N/A'}</td>
+              <td>${item.barcode || 'N/A'}</td>
+              <td>${item.name || 'Unknown Item'}</td>
+              <td>${item.quantity || 0}</td>
+              <td>₹${typeof item.buying_cost === 'number' ? item.buying_cost.toFixed(2) : '0.00'}</td>
+              <td>${item.unit || 'N/A'}</td>
             </tr>
-          `).join('') : '<tr><td colspan="2">No items</td></tr>'}
+          `).join('') || '<tr><td colspan="5">No items</td></tr>'}
         </tbody>
       </table>
     </div>

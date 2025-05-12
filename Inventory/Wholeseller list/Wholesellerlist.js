@@ -21,14 +21,59 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadWholesalers() {
         try {
             const wholesalers = await ipcRenderer.invoke("wholesalers:getWholesalers");
-            const wholesalersWithItems = await Promise.all(
+            const wholesalersWithDetails = await Promise.all(
                 wholesalers.map(async (wholesaler) => {
+                    // Fetch items sold by this wholesaler
                     const items = await ipcRenderer.invoke("wholesalers:getWholesalerItems", wholesaler.id);
-                    return { ...wholesaler, items };
+                    console.log(`Items for wholesaler ${wholesaler.name}:`, items);
+
+                    // Fetch purchases for this wholesaler to get item details
+                    const purchases = await ipcRenderer.invoke("wholesalerPurchases:getPurchases");
+                    const wholesalerPurchases = purchases.filter(p => p.wholesaler_name === wholesaler.name);
+                    console.log(`Purchases for wholesaler ${wholesaler.name}:`, wholesalerPurchases);
+
+                    const purchaseItems = wholesalerPurchases.flatMap(purchase => {
+                        try {
+                            const purchaseData = JSON.parse(purchase.data);
+                            console.log(`Parsed purchase data for purchase ID ${purchase.id}:`, purchaseData);
+                            return (purchaseData.totalItems || []).map(item => {
+                                console.log(`Raw purchase item:`, item);
+                                return {
+                                    name: item.name || item.item_name || "Unknown Item",
+                                    barcode: item.barcode || "N/A",
+                                    buying_cost: parseFloat(item.buying_cost) || 0,
+                                    mrp: parseFloat(item.mrp || item.MRP || item.retail_price) || 0,
+                                    gst: parseFloat(item.gst_percentage || item.gst_rate || item.tax_rate) || 0,
+                                    quantity: parseInt(item.quantity) || 0,
+                                    unit: item.unit || "N/A"
+                                };
+                            });
+                        } catch (error) {
+                            console.error(`Failed to parse purchase data for purchase ID ${purchase.id}:`, error);
+                            return [];
+                        }
+                    });
+                    console.log(`Purchase items for wholesaler ${wholesaler.name}:`, purchaseItems);
+
+                    // Map items to include purchase details using barcode for matching
+                    const detailedItems = items.map(item => {
+                        const purchaseItem = purchaseItems.find(pi => pi.barcode === item.barcode) || {};
+                        console.log(`Matching item ${item.name} (barcode: ${item.barcode}) with purchase item:`, purchaseItem);
+                        return {
+                            name: item.name,
+                            barcode: item.barcode || "N/A",
+                            buying_cost: purchaseItem.buying_cost || 0,
+                            mrp: purchaseItem.mrp || 0,
+                            gst: purchaseItem.gst || 0,
+                            quantity: purchaseItem.quantity || 0,
+                            unit: purchaseItem.unit || "N/A"
+                        };
+                    });
+                    return { ...wholesaler, items: detailedItems };
                 })
             );
-            displayWholesalers(wholesalersWithItems);
-            return wholesalersWithItems;
+            displayWholesalers(wholesalersWithDetails);
+            return wholesalersWithDetails;
         } catch (error) {
             console.error("Error loading wholesalers:", error);
             return [];
@@ -76,32 +121,98 @@ document.addEventListener("DOMContentLoaded", () => {
             expandedRow = null;
         }
 
+        // Format the date to DD-MM-YYYY
+        const formatDate = (dateStr) => {
+            if (!dateStr) {
+                console.log("Date string is empty or null:", dateStr);
+                return "N/A";
+            }
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) {
+                    console.log("Invalid date format:", dateStr);
+                    return "N/A";
+                }
+                const formatted = `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
+                console.log(`Formatted date for ${dateStr}:`, formatted);
+                return formatted;
+            } catch (error) {
+                console.error("Error formatting date:", dateStr, error);
+                return "N/A";
+            }
+        };
+
+        // Log the raw createdAt value
+        console.log(`Raw createdAt for wholesaler ${wholesaler.name}:`, wholesaler.createdAt);
+
         // Create and show new details row
         const detailsRow = document.createElement("tr");
         detailsRow.className = "details-row";
-        const itemNames = wholesaler.items.map((item) => item.name).join(", ") || "None";
         detailsRow.innerHTML = `
             <td colspan="7">
-                <table class="summary-table">
-                    <tbody>
-                        <tr>
-                            <th>ID</th><td>${wholesaler.id}</td>
-                            <th>Name</th><td>${wholesaler.name}</td>
-                            <th>Contact Number</th><td>${wholesaler.contact_number}</td>
-                            <th>Email</th><td>${wholesaler.email || "N/A"}</td>
-                            <th>Address</th><td>${wholesaler.address || "N/A"}</td>
-                            <th>Tax ID/GSTIN</th><td>${wholesaler.tax_id || "N/A"}</td>
-                        </tr>
-                        <tr>
-                            <th>MOQ</th><td>${wholesaler.moq || "N/A"}</td>
-                            <th>Total Amount (₹)</th><td>₹${wholesaler.total_amount.toFixed(2)}</td>
-                            <th>Udhari (₹)</th><td>₹${wholesaler.udhari.toFixed(2)}</td>
-                            <th>Specialty Product</th><td>${wholesaler.specialty_product || "N/A"}</td>
-                            <th>Items Sold</th><td>${itemNames}</td>
-                            <th>Date of Creation</th><td>${wholesaler.createdAt || "N/A"}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="wholesaler-details">
+                    <table class="summary-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Contact Number</th>
+                                <th>Email</th>
+                                <th>Tax ID/GSTIN</th>
+                                <th>MOQ</th>
+                                <th>Total Amount (₹)</th>
+                                <th>Udhari (₹)</th>
+                                <th>Specialty Product</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>${wholesaler.id}</td>
+                                <td>${wholesaler.name}</td>
+                                <td>${wholesaler.contact_number}</td>
+                                <td>${wholesaler.email || "N/A"}</td>
+                                <td>${wholesaler.tax_id || "N/A"}</td>
+                                <td>${wholesaler.moq || "N/A"}</td>
+                                <td>₹${wholesaler.total_amount.toFixed(2)}</td>
+                                <td>₹${wholesaler.udhari.toFixed(2)}</td>
+                                <td>${wholesaler.specialty_product || "N/A"}</td>
+                            </tr>
+                            <tr>
+                                <th>Address</th>
+                                <td colspan="4">${wholesaler.address || "N/A"}</td>
+                                <th>Date of Creation</th>
+                                <td colspan="3">${formatDate(wholesaler.createdAt)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <h3>Items Sold</h3>
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>Barcode</th>
+                                <th>Item Name</th>
+                                <th>Buy Cost (₹)</th>
+                                <th>MRP (₹)</th>
+                                <th>GST %</th>
+                                <th>Quantity</th>
+                                <th>Unit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${wholesaler.items.length > 0 ? wholesaler.items.map(item => `
+                                <tr>
+                                    <td>${item.barcode || "N/A"}</td>
+                                    <td>${item.name || "Unknown Item"}</td>
+                                    <td>₹${item.buying_cost.toFixed(2)}</td>
+                                    <td>₹${item.mrp > 0 ? item.mrp.toFixed(2) : "N/A"}</td>
+                                    <td>${item.gst > 0 ? item.gst.toFixed(1) : "N/A"}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>${item.unit || "N/A"}</td>
+                                </tr>
+                            `).join('') : '<tr><td colspan="7">No items</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
             </td>
         `;
         row.insertAdjacentElement("afterend", detailsRow);
@@ -219,6 +330,7 @@ document.addEventListener("DOMContentLoaded", () => {
     closeModal.addEventListener("click", () => {
         wholesalerModal.style.display = "none";
     });
+
     window.addEventListener("click", (event) => {
         if (event.target === wholesalerModal) {
             wholesalerModal.style.display = "none";

@@ -11,21 +11,25 @@
   <div class="container">
     <h1>Wholesalers History</h1>
     <div class="search-bar">
-      <input type="text" id="searchInput" placeholder="Search by Wholesaler ID...">
-      <input type="text" id="searchByNameContact" placeholder="Search by Name or Contact Number...">
+      <input type="text" id="searchInput" placeholder="Search by Purchase ID...">
+      <input type="text" id="searchByNameContact" placeholder="Search by Wholesaler Name or Contact...">
     </div>
-    <div class="wholesalers-list">
-      <table id="wholesalersTable">
+    <div class="purchase-list">
+      <table id="purchasesTable">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Contact Number</th>
-            <th>Total Amount</th>
-            <th>Payment Method</th>
+            <th>Purchase<br>ID</th>
+            <th>Wholesaler<br>Name</th>
+            <th>Wholesaler<br>Contact</th>
+            <th>Total<br>Items</th>
+            <th>Payment<br>Method</th>
+            <th>Discount</th>
+            <th>Total<br>Cost</th>
+            <th>Amount<br>Paid</th>
+            <th>Date</th>
           </tr>
         </thead>
-        <tbody id="wholesalersTableBody"></tbody>
+        <tbody id="purchasesTableBody"></tbody>
       </table>
     </div>
   </div>
