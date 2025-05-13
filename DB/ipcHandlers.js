@@ -6,7 +6,17 @@ const Database = require('better-sqlite3');
 const dbPath = path.join(__dirname, 'inventory.db');
 const db = new Database(dbPath);
 
-
+// Format date to YYYY-MM-DD HH:MM:SS
+function formatDateToSQLite(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
 
 // Schema migration: Add discount and total_cost columns if they don't exist
 try {
@@ -91,7 +101,7 @@ db.prepare(`
     bill_id INTEGER,
     amount REAL NOT NULL,
     type TEXT NOT NULL,
-    createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+    createdAt TEXT,  -- Remove DEFAULT CURRENT_TIMESTAMP
     FOREIGN KEY (customer_id) REFERENCES customers(id),
     FOREIGN KEY (bill_id) REFERENCES bills(id)
   )
@@ -238,6 +248,7 @@ ipcMain.handle('inventory:checkBarcode', (event, barcode) => {
 });
 
 // Save bill and update udhari
+// In ipcMain.handle('billing:saveBill')
 ipcMain.handle('billing:saveBill', (event, billData) => {
   const insertBillStmt = db.prepare(`
     INSERT INTO bills (customer_id, payment_method, amount_paid, change, discount, total_cost) 
@@ -250,8 +261,8 @@ ipcMain.handle('billing:saveBill', (event, billData) => {
   const getStockStmt = db.prepare(`SELECT stock FROM items WHERE barcode = ?`);
   const updateStockStmt = db.prepare(`UPDATE items SET stock = stock - ? WHERE barcode = ?`);
   const insertUdhariStmt = db.prepare(`
-    INSERT INTO udhari (customer_id, bill_id, amount, type) 
-    VALUES (?, ?, ?, ?)
+    INSERT INTO udhari (customer_id, bill_id, amount, type, createdAt) 
+    VALUES (?, ?, ?, ?, ?)
   `);
 
   const transaction = db.transaction((bill) => {
@@ -304,7 +315,14 @@ ipcMain.handle('billing:saveBill', (event, billData) => {
 
     // Record udhari if debt
     if (bill.isDebt) {
-      insertUdhariStmt.run(bill.customer_id, billId, -totalCost, 'debt');
+      const formattedDate = formatDateToSQLite(new Date()); // Use same formatting as repayments
+      insertUdhariStmt.run(
+        bill.customer_id,
+        billId,
+        -totalCost,
+        'debt',
+        formattedDate
+      );
       db.prepare('UPDATE customers SET udhari = udhari + ? WHERE id = ?')
         .run(-totalCost, bill.customer_id);
     }
@@ -313,7 +331,7 @@ ipcMain.handle('billing:saveBill', (event, billData) => {
     BrowserWindow.getAllWindows().forEach(win => {
       win.webContents.send('billing:newBill', {
         id: billId,
-        customer_iddob: bill.customer_id || null,
+        customer_id: bill.customer_id || null,
         totalItems: bill.totalItems,
         totalCost: totalCost,
         discount: discount,
@@ -437,11 +455,13 @@ ipcMain.handle('udhari:addRepayment', (event, repayment) => {
   `);
 
   const transaction = db.transaction((repayment) => {
+    // Format createdAt to match debt date format (YYYY-MM-DD HH:MM:SS)
+    const formattedDate = formatDateToSQLite(repayment.createdAt);
     insertStmt.run(
       repayment.customer_id,
       null,
       repayment.amount,
-      repayment.createdAt
+      formattedDate
     );
     updateCustomerStmt.run(repayment.amount, repayment.customer_id);
   });
@@ -466,12 +486,14 @@ ipcMain.handle('udhari:restoreEntry', (event, entry) => {
   `);
 
   const transaction = db.transaction((entry) => {
+    // Format createdAt to match debt date format (YYYY-MM-DD HH:MM:SS)
+    const formattedDate = formatDateToSQLite(entry.createdAt);
     insertStmt.run(
       entry.customer_id,
       entry.bill_id,
       entry.amount,
       entry.type,
-      entry.createdAt
+      formattedDate
     );
     updateCustomerStmt.run(entry.amount, entry.customer_id);
   });

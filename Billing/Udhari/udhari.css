@@ -565,3 +565,73 @@ body.dark-mode .close-btn:hover {
     gap: 10px;
   }
 }
+
+.navbar {
+  padding: 10px 20px;
+}
+
+.navbar-nav {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+  .navbar-nav {
+      flex-direction: column;
+  }
+
+  .navbar-nav .btn {
+      margin-bottom: 5px;
+  }
+}
+
+.btn {
+  font-size: 16px;
+  padding: 8px;
+}
+
+.btn-outline-primary {
+  border: 1px solid #007bff;
+  color: #007bff;
+  background-color: transparent;
+}
+
+.btn-outline-primary:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-outline-success {
+  border: 1px solid #28a745;
+  color: #28a745;
+  background-color: transparent;
+}
+
+.btn-outline-success:hover {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-outline-danger {
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  background-color: transparent;
+}
+
+.btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: white;
+}
+

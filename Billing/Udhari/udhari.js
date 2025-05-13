@@ -33,16 +33,7 @@ async function loadData() {
 
 // Update summary section
 function updateSummary() {
-  const totalDues = transactions
-    .filter((t) => t.type === "debt")
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-  const totalPaid = transactions
-    .filter((t) => t.type === "repayment")
-    .reduce((sum, t) => sum + t.amount, 0);
   const pendingAmount = customers.reduce((sum, c) => sum + c.total_udhari, 0);
-
-  document.getElementById("totalDues").textContent = `₹${totalDues.toFixed(2)}`;
-  document.getElementById("totalPaid").textContent = `₹${totalPaid.toFixed(2)}`;
   document.getElementById("pendingAmount").textContent = `₹${pendingAmount.toFixed(2)}`;
 }
 
@@ -87,17 +78,28 @@ function applySort(filteredCustomers = customers) {
       sortedCustomers.sort((a, b) => a.name.localeCompare(b.name));
       break;
     case "nameDesc":
-      sortedCustomers.sort((a, b) => b.name.localeCompare(a.name));
+      sortedCustomers.sort((a, b) => b.name.localeCompare(b.name));
       break;
     case "udhariAsc":
       sortedCustomers.sort((a, b) => a.total_udhari - b.total_udhari);
       break;
     case "udhariDesc":
-      sortedCustomers.sort((a, b) => b.total_udhari - a.total_udhari);
+      sortedCustomers.sort((a, b) => b.total_udhari - b.total_udhari);
       break;
   }
 
   renderTable(sortedCustomers);
+}
+
+// Format date to remove 'T' and 'Z'
+function formatDate(dateString) {
+  if (!dateString) return dateString;
+  // For repayment dates, remove T and Z and format
+  if (dateString.includes('T')) {
+    return dateString.replace('T', ' ').replace('Z', '');
+  }
+  // For debt dates, keep as is
+  return dateString;
 }
 
 // Render the customer table
@@ -127,6 +129,10 @@ function renderTable(customersToRender) {
     const transactionRow = document.createElement("tr");
     transactionRow.className = "collapse";
     transactionRow.id = `transactions-${customer.id}`;
+    // Sort transactions by createdAt in descending order (most recent first)
+    const sortedTransactions = transactions
+      .filter((t) => t.customer_id === customer.id)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     transactionRow.innerHTML = `
       <td colspan="4">
         <table class="transaction-table">
@@ -139,12 +145,11 @@ function renderTable(customersToRender) {
             </tr>
           </thead>
           <tbody>
-            ${transactions
-              .filter((t) => t.customer_id === customer.id)
+            ${sortedTransactions
               .map(
                 (t) => `
                 <tr>
-                  <td>${t.createdAt}</td>
+                  <td>${formatDate(t.createdAt)}</td>
                   <td>${
                     t.type === "debt" && t.bill_id
                       ? `<a href="#" onclick='showBillDetails(${t.bill_id})'>Debt</a>`
