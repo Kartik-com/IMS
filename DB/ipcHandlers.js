@@ -20,11 +20,11 @@ try {
       WHERE remaining_amount_to_pay IS NOT NULL AND remaining_amount_to_pay != 0.0
       `
     ).run();
-    console.log("Merged remaining_amount_to_pay into udhari");
+    
     db.prepare("ALTER TABLE wholesalers DROP COLUMN remaining_amount_to_pay").run();
-    console.log("Dropped remaining_amount_to_pay column from wholesalers table");
+    
   } else {
-    console.log("remaining_amount_to_pay column does not exist in wholesalers table, skipping migration");
+    
   }
 } catch (err) {
   console.error("Error during remaining_amount_to_pay migration:", err);
@@ -212,7 +212,6 @@ db.prepare(
 `
 ).run();
 
-console.log("Database initialized successfully");
 
 // GET customers
 ipcMain.handle("customers:getCustomers", () => {
@@ -465,9 +464,7 @@ ipcMain.handle("billing:saveBill", (event, billData) => {
     return billId;
   });
   try {
-    console.log("Processing bill:", billData);
     const billId = transaction(billData);
-    console.log("Bill saved successfully with ID:", billId);
     return { success: true, billId };
   } catch (err) {
     console.error("Billing transaction failed:", err.message, err.stack);
@@ -764,7 +761,7 @@ ipcMain.handle("wholesalers:checkContactNumber", (event, contact_number) => {
 ipcMain.handle("wholesalers:getWholesalerItems", (event, wholesalerId) => {
   try {
     const stmt = db.prepare(`
-      SELECT i.id, i.name, i.barcode, i.gstPercentage, i.buyingCost, i.sellingCost, i.MRP, i.stock, i.unit
+      SELECT i.id, i.name, i.barcode, i.gstPercentage, i.buyingCost, i.sellingCost, i.mrp, i.stock, i.unit
       FROM wholesaler_items wi
       JOIN items i ON wi.item_id = i.id
       WHERE wi.wholesaler_id = ?
@@ -907,9 +904,7 @@ ipcMain.handle("wholesalerPurchases:savePurchase", (event, purchaseData) => {
     return purchaseId;
   });
   try {
-    console.log("Processing purchase:", purchaseData);
     const purchaseId = transaction(purchaseData);
-    console.log("Purchase saved successfully with ID:", purchaseId);
     return { success: true, purchaseId };
   } catch (err) {
     console.error("Purchase transaction failed:", err.message, err.stack);
@@ -1001,7 +996,6 @@ ipcMain.handle("returns:addReturn", (event, returnData) => {
     UPDATE items SET stock = stock + ? WHERE id = ?
   `);
   const transaction = db.transaction((data) => {
-    console.log('Validating return data:', data);
     if (!data.mobile_number || !data.barcode || !data.bill_id || !data.quantity || !data.refund_amount || !data.createdAt) {
       console.error('Missing required fields');
       throw new Error("All required fields must be provided");
@@ -1060,15 +1054,11 @@ ipcMain.handle("returns:addReturn", (event, returnData) => {
       data.reason || null,
       data.createdAt
     ).lastInsertRowid;
-    console.log('Inserted return with ID:', returnId);
     updateStockStmt.run(data.quantity, item.id);
-    console.log('Updated stock for item_id:', item.id, 'by quantity:', data.quantity);
     return returnId;
   });
   try {
-    console.log("Processing return:", returnData);
     const returnId = transaction(returnData);
-    console.log("Return saved successfully with ID:", returnId);
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send("returns:newReturn", {
         id: returnId,
@@ -1161,9 +1151,7 @@ ipcMain.handle("returns:editReturn", (event, returnData) => {
     updateStockStmt.run(stockAdjustment, item.id);
   });
   try {
-    console.log("Editing return:", returnData);
     transaction(returnData);
-    console.log("Return edited successfully with ID:", returnData.id);
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send("returns:updatedReturn", {
         id: returnData.id,
@@ -1204,9 +1192,7 @@ ipcMain.handle("returns:deleteReturn", (event, id) => {
     updateStockStmt.run(returnItem.quantity, returnItem.item_id);
   });
   try {
-    console.log("Deleting return with ID:", id);
     transaction(id);
-    console.log("Return deleted successfully");
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send("returns:deletedReturn", { id });
     });
@@ -1312,15 +1298,12 @@ ipcMain.handle("returns:getBillItemsForReturn", (event, billId) => {
 
 ipcMain.handle("inventory:getItemByBarcode", (event, barcode) => {
   try {
-    console.log('Received barcode query:', barcode);
     const query = `
       SELECT id, name, barcode, gstPercentage, buyingCost, sellingCost, MRP, stock, unit
       FROM items
       WHERE barcode = ?
     `;
-    console.log('Executing query:', query);
     const item = db.prepare(query).get(barcode);
-    console.log('Query result:', item);
     return item || null;
   } catch (err) {
     console.error('Error in inventory:getItemByBarcode:', {

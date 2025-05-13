@@ -151,7 +151,7 @@ async function togglePurchaseDetails(row, purchaseId, purchase) {
   detailsRow = document.createElement('tr');
   detailsRow.classList.add('details-row');
   const detailsCell = document.createElement('td');
-  detailsCell.colSpan = 9; // Adjusted colspan to match new column count
+  detailsCell.colSpan = 9; // Matches the 9 columns in the main table
   detailsCell.innerHTML = `
     <div class="purchase-details">
       <table class="summary-table">
@@ -166,7 +166,6 @@ async function togglePurchaseDetails(row, purchaseId, purchase) {
             <th>Discount</th>
             <th>Total Cost</th>
             <th>Amount Paid</th>
-            <th>Notes</th>
           </tr>
         </thead>
         <tbody>
@@ -180,7 +179,6 @@ async function togglePurchaseDetails(row, purchaseId, purchase) {
             <td>₹${discount}</td>
             <td>₹${totalCost}</td>
             <td>₹${amountPaid}</td>
-            <td>${purchaseData.notes || 'N/A'}</td>
           </tr>
         </tbody>
       </table>

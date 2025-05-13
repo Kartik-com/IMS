@@ -1,315 +1,305 @@
+const { ipcRenderer } = require('electron');
+
+// Register Chart.js data labels plugin
+Chart.register(ChartDataLabels);
+
 document.addEventListener('DOMContentLoaded', () => {
+  const timeSpanSelect = document.getElementById('timeSpan');
+  const salesChartCanvas = document.getElementById('salesChart');
+  const loadingDiv = document.getElementById('loading');
+  const noDataDiv = document.getElementById('noData');
+  let salesChart;
 
-    let salesChart = null;
-    let allTransactions = [];
-
-    // Function to fetch transactions from API
-    async function fetchTransactions() {
-        try {
-            console.log('Fetching transactions from API...');
-            const response = await fetch('http://192.168.0.100:4000/api/v1/purchese/getAllPurcheseHistory');
-            const data = await response.json();
-            console.log('API response:', data);
-            if (data.success && Array.isArray(data.allPurcheseHistory)) {
-                allTransactions = data.allPurcheseHistory
-                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                renderTransactions(allTransactions);
-                updateSalesChart(document.getElementById('timeFilter').value);
-            } else {
-                console.error('Invalid API response:', data);
-                allTransactions = [];
-                renderTransactions([]);
-                updateSalesChart(document.getElementById('timeFilter').value);
-            }
-        } catch (error) {
-            console.error('Error fetching transactions:', error);
-            allTransactions = [];
-            renderTransactions([]);
-            updateSalesChart(document.getElementById('timeFilter').value);
+  // Initialize Chart.js
+  const initChart = (labels, data) => {
+    if (salesChart) salesChart.destroy();
+    salesChart = new Chart(salesChartCanvas, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Sales (₹)',
+          data: data,
+          backgroundColor: '#3B82F6',
+          borderColor: '#1A365D',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Sales Amount (₹)', font: { size: 14, weight: '500' }, color: '#1A365D' },
+            grid: { color: '#E2E8F0' }
+          },
+          x: {
+            title: { display: true, text: 'Time Period', font: { size: 14, weight: '500' }, color: '#1A365D' },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1A365D',
+            titleFont: { size: 14 },
+            bodyFont: { size: 14 },
+            callbacks: { label: (context) => `₹${context.parsed.y.toFixed(2)}` }
+          },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            formatter: (value) => `₹${value.toFixed(2)}`,
+            font: { size: 12, weight: '600' },
+            color: '#1A365D'
+          }
         }
-    }
-
-    // Function to render transactions
-    function renderTransactions(transactions) {
-        const transactionsContainer = document.getElementById('transactions');
-        // Store open state of transaction details
-        const openDetails = {};
-        document.querySelectorAll('.transaction-details.show').forEach(details => {
-            const card = details.closest('.transaction-card');
-            const index = Array.from(transactionsContainer.children).indexOf(card);
-            if (index >= 0) openDetails[index] = true;
-        });
-        transactionsContainer.innerHTML = '';
-        transactions.forEach((transaction, index) => {
-            const date = new Date(transaction.createdAt).toLocaleString('en-IN', {
-                dateStyle: 'medium',
-                timeStyle: 'short'
-            });
-            // Use customerName if available, otherwise "Unknown"
-            const customerName = transaction.customerName || 'Unknown';
-            const transactionCard = document.createElement('div');
-            transactionCard.className = 'transaction-card';
-            transactionCard.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="text-dark font-medium">${customerName}</p>
-                        <p class="text-gray text-sm">${date}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-dark font-medium">₹${transaction.totalAmount.toFixed(2)}</p>
-                        <p class="text-gray text-sm">${transaction.paymentMethod}</p>
-                    </div>
-                </div>
-                <div class="transaction-details ${openDetails[index] ? 'show' : ''}">
-                    <h3 class="text-lg font-semibold text-dark mb-4">Bill Details</h3>
-                    <table class="details-table">
-                        <thead>
-                            <tr>
-                                <th>Item Name</th>
-                                <th>Quantity</th>
-                                <th>Price (₹)</th>
-                                <th>Item Total (₹)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${transaction.items.map((item, itemIndex) => `
-                                <tr class="${itemIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
-                                    <td>${item.item?.name || 'Unknown Item'}</td>
-                                    <td>${item.quantity}</td>
-                                    <td>${item.price.toFixed(2)}</td>
-                                    <td>${(item.price * item.quantity).toFixed(2)}</td>
-                                </tr>
-                            `).join('')}
-                            <tr class="bg-white">
-                                <td colspan="4" class="text-left font-semibold">Summary</td>
-                            </tr>
-                            <tr class="${transaction.items.length % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                <td>Total Before GST</td>
-                                <td colspan="3">${transaction.totalAmountBeforeGST.toFixed(2)}</td>
-                            </tr>
-                            <tr class="${(transaction.items.length + 1) % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                <td>Total GST</td>
-                                <td colspan="3">${transaction.totalGST.toFixed(2)}</td>
-                            </tr>
-                            <tr class="${(transaction.items.length + 2) % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                <td>Discount</td>
-                                <td colspan="3">${transaction.discount.toFixed(2)}</td>
-                            </tr>
-                            <tr class="${(transaction.items.length + 3) % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                <td>Total Amount</td>
-                                <td colspan="3">${transaction.totalAmount.toFixed(2)}</td>
-                            </tr>
-                            <tr class="${(transaction.items.length + 4) % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                <td>Amount Paid</td>
-                                <td colspan="3">${transaction.amountPaid.toFixed(2)}</td>
-                            </tr>
-                            <tr class="${(transaction.items.length + 5) % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                <td>Change Given</td>
-                                <td colspan="3">${transaction.change.toFixed(2)}</td>
-                            </tr>
-                            <tr class="${(transaction.items.length + 6) % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                                <td>Payment Method</td>
-                                <td colspan="3">${transaction.paymentMethod}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            // Toggle details on click, prevent bubbling
-            const summaryDiv = transactionCard.querySelector('.flex');
-            summaryDiv.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const details = transactionCard.querySelector('.transaction-details');
-                details.classList.toggle('show');
-            });
-            transactionsContainer.appendChild(transactionCard);
-        });
-    }
-
-    // Function to group transactions by time period
-    function groupTransactions(period) {
-        const grouped = {};
-        allTransactions.forEach(t => {
-            const date = new Date(t.createdAt);
-            let key;
-            if (period === 'daily') {
-                key = date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit' });
-            } else if (period === 'weekly') {
-                const week = Math.ceil((date.getDate() + (7 - date.getDay())) / 7);
-                key = `${date.getFullYear()}-W${week}`;
-            } else if (period === 'monthly') {
-                key = date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-            } else if (period === 'yearly') {
-                key = date.getFullYear();
-            }
-            if (!grouped[key]) {
-                grouped[key] = { total: 0, count: 0 };
-            }
-            grouped[key].total += Number(t.totalAmount) || 0;
-            grouped[key].count += 1;
-        });
-        return Object.entries(grouped).map(([key, value]) => ({
-            label: key,
-            total: value.total
-        })).sort((a, b) => {
-            if (period === 'weekly') {
-                const [yearA, weekA] = a.label.split('-W').map(Number);
-                const [yearB, weekB] = b.label.split('-W').map(Number);
-                return yearA - yearB || weekA - weekB;
-            }
-            return a.label.localeCompare(b.label);
-        });
-    }
-
-    // Function to update sales chart
-    function updateSalesChart(period) {
-        const ctx = document.getElementById('salesChart').getContext('2d');
-        console.log('Updating chart for period:', period);
-        let labels, data;
-        if (allTransactions.length === 0) {
-            console.warn('No transactions; using placeholder data');
-            const now = new Date();
-            labels = [
-                new Date(now - 2 * 60 * 60 * 1000).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }),
-                new Date(now - 1 * 60 * 60 * 1000).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }),
-                now.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
-            ];
-            data = [50, 75, 100];
-        } else {
-            const groupedData = groupTransactions(period);
-            labels = groupedData.map(d => d.label);
-            data = groupedData.map(d => d.total);
-        }
-        // Log data for debugging
-        console.log('Chart labels:', labels);
-        console.log('Chart data:', data);
-        // Check for valid data
-        if (!labels.length || !data.length) {
-            console.warn('Invalid or no data for chart; using placeholder');
-            const now = new Date();
-            labels = [
-                new Date(now - 2 * 60 * 60 * 1000).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }),
-                new Date(now - 1 * 60 * 60 * 1000).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }),
-                now.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
-            ];
-            data = [50, 75, 100];
-        }
-        // Create gradient for bars
-        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, '#28A745');
-        gradient.addColorStop(1, '#218838');
-        // Calculate dynamic bar thickness
-        const maxBarThickness = 50; // Broader bars for better visibility
-        const minBarThickness = 10; // Minimum to prevent overcrowding
-        const barThickness = Math.max(minBarThickness, Math.min(maxBarThickness, 600 / labels.length));
-        // Calculate max value for y-axis padding, with fallback for zero/empty data
-        const maxDataValue = data.length > 0 && Math.max(...data) > 0 ? Math.max(...data) : 100;
-        // If chart exists, update it; otherwise, create new chart
-        if (salesChart) {
-            console.log('Updating existing chart');
-            salesChart.data.labels = labels;
-            salesChart.data.datasets[0].data = data;
-            salesChart.data.datasets[0].barThickness = barThickness;
-            salesChart.options.scales.y.suggestedMax = maxDataValue * 1.4; // Update padding dynamically
-            salesChart.update();
-        } else {
-            console.log('Creating new chart');
-            salesChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total Sales (₹)',
-                        data: data,
-                        backgroundColor: gradient,
-                        borderColor: '#218838',
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        barThickness: barThickness
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 1000,
-                        easing: 'easeOutQuart'
-                    },
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: period === 'daily' ? 'Date' : period === 'weekly' ? 'Week' : period === 'monthly' ? 'Month' : 'Year',
-                                color: '#000000',
-                                font: { size: 14 }
-                            },
-                            ticks: {
-                                color: '#000000',
-                                maxRotation: 45,
-                                minRotation: 45,
-                                font: { size: 12 }
-                            },
-                            grid: { display: false }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Total Sales (₹)',
-                                color: '#000000',
-                                font: { size: 14 },
-                                padding: { top: 10, bottom: 10 }
-                            },
-                            ticks: {
-                                color: '#000000',
-                                font: { size: 12 }
-                            },
-                            grid: { color: '#E5E7EB', drawBorder: false },
-                            beginAtZero: true,
-                            position: 'left',
-                            suggestedMax: maxDataValue * 1.4 // 40% extra space above max value
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: '#FFFFFF',
-                            titleColor: '#000000',
-                            bodyColor: '#000000',
-                            borderColor: '#E5E7EB',
-                            borderWidth: 1
-                        },
-                        datalabels: {
-                            anchor: 'end',
-                            align: 'top',
-                            color: '#000000',
-                            font: {
-                                size: 14, // Larger font for visibility
-                                weight: 'bold'
-                            },
-                            formatter: (value) => `₹${value.toFixed(2)}` // Show as currency
-                        }
-                    }
-                },
-                plugins: [ChartDataLabels] // Register ChartDataLabels plugin
-            });
-            // Enable swipe gestures
-            const canvas = document.getElementById('salesChart');
-            const hammer = new Hammer(canvas);
-            hammer.get('pan').set({ direction: Hammer.DIRECTION_HORIZONTAL });
-            hammer.on('pan', (e) => {
-                canvas.scrollLeft -= e.deltaX;
-            });
-        }
-    }
-
-    // Handle time filter change
-    document.getElementById('timeFilter').addEventListener('change', (e) => {
-        updateSalesChart(e.target.value);
+      }
     });
+  };
 
-    // Initialize
-    console.log('Initializing sales history...');
-    fetchTransactions();
+  // Parse date without UTC normalization
+  const parseDate = (dateStr) => {
+    let date;
+    // Try ISO format
+    date = new Date(dateStr);
+    if (!isNaN(date.getTime())) return date;
+    // Try YYYY-MM-DD or DD-MM-YYYY
+    const parts = dateStr.match(/(\d{1,4})[-/](\d{1,2})[-/](\d{1,4})/);
+    if (parts) {
+      if (parseInt(parts[1]) > 31) {
+        date = new Date(`${parts[1]}-${parts[2]}-${parts[3]}`);
+      } else {
+        date = new Date(`${parts[3]}-${parts[2]}-${parts[1]}`);
+      }
+      if (!isNaN(date.getTime())) return date;
+    }
+    return null;
+  };
+
+  // Fetch and process sales data
+  const fetchSalesData = async (timeSpan) => {
+    try {
+      loadingDiv.classList.remove('hidden');
+      noDataDiv.classList.add('hidden');
+      salesChartCanvas.classList.add('hidden');
+
+      const bills = await ipcRenderer.invoke('billing:getBills');
+
+      // Filter valid bills
+      const validBills = bills.filter(bill => {
+        try {
+          const billData = JSON.parse(bill.data);
+          const billDate = parseDate(bill.createdAt);
+          return billData && typeof billData.totalCost === 'number' && billDate && !isNaN(billDate.getTime());
+        } catch (error) {
+          console.error(`Invalid bill ID ${bill.id}: ${error.message}`);
+          return false;
+        }
+      });
+
+      if (!validBills.length) {
+        console.error(`No valid bills for ${timeSpan}`);
+        loadingDiv.classList.add('hidden');
+        noDataDiv.classList.remove('hidden');
+        initChart(['No Data'], [0]);
+        updateMetrics([]);
+        return;
+      }
+
+      const today = new Date();
+      let startDate;
+      let endDate;
+      let labels = [];
+      let salesData = [];
+
+      switch (timeSpan) {
+        case 'daily':
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - 6);
+          startDate.setHours(0, 0, 0, 0);
+          labels = Array.from({ length: 7 }, (_, i) => {
+            const date = new Date(startDate);
+            date.setDate(startDate.getDate() + i);
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          });
+          salesData = Array(7).fill(0);
+          validBills.forEach(bill => {
+            const billData = JSON.parse(bill.data);
+            const billDate = parseDate(bill.createdAt);
+            if (billDate >= startDate && billDate <= today) {
+              const dayIndex = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24));
+              if (dayIndex >= 0 && dayIndex < 7) {
+                salesData[dayIndex] += parseFloat(billData.totalCost) || 0;
+              }
+            }
+          });
+          break;
+        case 'weekly':
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - 27);
+          startDate.setHours(0, 0, 0, 0);
+          labels = Array.from({ length: 4 }, (_, i) => `Week ${i + 1}`);
+          salesData = Array(4).fill(0);
+          validBills.forEach(bill => {
+            const billData = JSON.parse(bill.data);
+            const billDate = parseDate(bill.createdAt);
+            if (billDate >= startDate && billDate <= today) {
+              const weekIndex = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24 * 7));
+              if (weekIndex >= 0 && weekIndex < 4) {
+                salesData[weekIndex] += parseFloat(billData.totalCost) || 0;
+              }
+            }
+          });
+          break;
+        case '15days':
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - 14);
+          startDate.setHours(0, 0, 0, 0);
+          labels = ['Days 1-5', 'Days 6-10', 'Days 11-15'];
+          salesData = Array(3).fill(0);
+          validBills.forEach(bill => {
+            const billData = JSON.parse(bill.data);
+            const billDate = parseDate(bill.createdAt);
+            if (billDate >= startDate && billDate <= today) {
+              const dayIndex = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24));
+              if (dayIndex >= 0 && dayIndex < 5) salesData[0] += parseFloat(billData.totalCost) || 0;
+              else if (dayIndex < 10) salesData[1] += parseFloat(billData.totalCost) || 0;
+              else if (dayIndex < 15) salesData[2] += parseFloat(billData.totalCost) || 0;
+            }
+          });
+          break;
+        case 'monthly':
+          startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1); // Start of month, 1 year ago
+          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1); // Start of next month
+          console.log(`Monthly date range: startDate=${startDate.toISOString()}, endDate=${endDate.toISOString()}`);
+          labels = Array.from({ length: 12 }, (_, i) => {
+            const date = new Date(startDate);
+            date.setMonth(startDate.getMonth() + i);
+            return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+          });
+          salesData = Array(12).fill(0);
+          const monthlyBills = validBills.filter(bill => {
+            const billDate = parseDate(bill.createdAt);
+            return billDate && billDate >= startDate && billDate < endDate;
+          });
+          console.log(`Monthly bills: ${monthlyBills.length}`, monthlyBills.map(b => ({
+            id: b.id,
+            createdAt: b.createdAt,
+            totalCost: JSON.parse(b.data).totalCost
+          })));
+          monthlyBills.forEach(bill => {
+            const billData = JSON.parse(bill.data);
+            const billDate = parseDate(bill.createdAt);
+            const monthsDiff = (billDate.getFullYear() - startDate.getFullYear()) * 12 + billDate.getMonth() - startDate.getMonth();
+            console.log(`Bill ID ${bill.id}: createdAt=${bill.createdAt}, billDate=${billDate.toISOString()}, monthsDiff=${monthsDiff}, totalCost=${billData.totalCost}`);
+            if (monthsDiff >= 0 && monthsDiff < 12) {
+              salesData[monthsDiff] += parseFloat(billData.totalCost) || 0;
+            }
+          });
+          console.log(`Monthly salesData:`, salesData);
+          break;
+        case 'yearly':
+          startDate = new Date(2020, 0, 1);
+          endDate = new Date(2026, 0, 1);
+          labels = ['2020', '2021', '2022', '2023', '2024', '2025'];
+          salesData = Array(6).fill(0);
+          validBills.forEach(bill => {
+            const billData = JSON.parse(bill.data);
+            const billDate = parseDate(bill.createdAt);
+            if (billDate >= startDate && billDate < endDate) {
+              const yearIndex = billDate.getFullYear() - 2020;
+              if (yearIndex >= 0 && yearIndex < 6) {
+                salesData[yearIndex] += parseFloat(billData.totalCost) || 0;
+              }
+            }
+          });
+          break;
+      }
+
+      loadingDiv.classList.add('hidden');
+      if (salesData.every(val => val === 0)) {
+        console.error(`No sales data for ${timeSpan}`);
+        noDataDiv.classList.remove('hidden');
+        initChart(['No Sales Data'], [0]);
+      } else {
+        salesChartCanvas.classList.remove('hidden');
+        initChart(labels, salesData);
+      }
+      updateMetrics(validBills);
+    } catch (err) {
+      console.error(`Error in ${timeSpan}: ${err.message}`);
+      loadingDiv.classList.add('hidden');
+      noDataDiv.classList.remove('hidden');
+      initChart(['Error'], [0]);
+      updateMetrics([]);
+    }
+  };
+
+  // Update metric cards with caching
+  const updateMetrics = async (bills) => {
+    let totalSales = 0;
+    let totalProfit = 0;
+    let totalGST = 0;
+    let totalDiscounts = 0;
+    const itemCache = new Map();
+
+    for (const bill of bills) {
+      let billData;
+      try {
+        billData = JSON.parse(bill.data);
+      } catch (error) {
+        console.error(`Invalid bill data ID ${bill.id}: ${error.message}`);
+        continue;
+      }
+
+      totalSales += parseFloat(billData.totalCost) || 0;
+      totalDiscounts += parseFloat(billData.discount) || 0;
+
+      if (billData.totalItems && Array.isArray(billData.totalItems)) {
+        for (const item of billData.totalItems) {
+          if (!item.barcode) continue;
+
+          let itemDetails = itemCache.get(item.barcode);
+          if (!itemDetails) {
+            try {
+              itemDetails = await ipcRenderer.invoke('inventory:getItemByBarcode', item.barcode);
+              itemCache.set(item.barcode, itemDetails || {});
+            } catch (error) {
+              console.error(`Error fetching item ${item.barcode}: ${error.message}`);
+              continue;
+            }
+          }
+
+          if (itemDetails) {
+            const profit = (parseFloat(item.price) - (parseFloat(itemDetails.buyingCost) || 0)) * (item.quantity || 1);
+            totalProfit += profit || 0;
+            const gst = (parseFloat(item.price) * (parseFloat(itemDetails.gstPercentage) || 0) / 100) * (item.quantity || 1);
+            totalGST += gst || 0;
+          }
+        }
+      }
+    }
+
+    console.log(`Metrics: Sales=₹${totalSales.toFixed(2)}, Profit=₹${totalProfit.toFixed(2)}, GST=₹${totalGST.toFixed(2)}, Discounts=₹${totalDiscounts.toFixed(2)}`);
+
+    document.getElementById('totalSales').textContent = `₹${totalSales.toFixed(2)}`;
+    document.getElementById('totalProfit').textContent = `₹${totalProfit.toFixed(2)}`;
+    document.getElementById('totalGST').textContent = `₹${totalGST.toFixed(2)}`;
+    document.getElementById('totalDiscounts').textContent = `₹${totalDiscounts.toFixed(2)}`;
+  };
+
+  // Handle time span change
+  timeSpanSelect.addEventListener('change', () => {
+    fetchSalesData(timeSpanSelect.value);
+  });
+
+  // Real-time updates
+  ipcRenderer.on('billing:newBill', () => {
+    fetchSalesData(timeSpanSelect.value);
+  });
+
+  // Initial fetch
+  fetchSalesData(timeSpanSelect.value);
 });
