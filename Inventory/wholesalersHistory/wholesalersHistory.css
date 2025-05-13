@@ -101,6 +101,10 @@ tr:hover:not(.details-row) {
   background-color: #e8f5e9; /* Slightly lighter cream green for the table */
 }
 
+.summary-table th, .summary-table td {
+  width: 11.11%; /* Distribute width evenly across 9 columns */
+}
+
 .summary-table tbody tr {
   background-color: #f0f8e9; /* Lighter cream green for rows, still distinct */
 }

@@ -1,36 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales History</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
-    <link rel="stylesheet" href="sales.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="sales.css">
 </head>
-<body class="bg-gray-100 font-sans">
-    <div class="container mx-auto p-6">
-        <h1 class="text-2xl font-bold text-dark mb-6">Sales History</h1>
-        <!-- Chart and Filters -->
-        <div class="bg-white p-6 rounded-lg shadow mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold text-dark">Sales Overview</h2>
-                <select id="timeFilter" class="border border-gray-300 rounded px-3 py-2 text-dark focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                </select>
-            </div>
-            <div class="overflow-x-auto">
-                <canvas id="salesChart" class="w-full" style="max-height: 300px;"></canvas>
-            </div>
-        </div>
-        <!-- Transactions List -->
-        <div id="transactions" class="space-y-4"></div>
+<body class="bg-gray-100">
+  <div class="container mx-auto p-8">
+    <h1 class="text-3xl font-semibold text-blue-900 mb-8 text-center">Sales Overview</h1>
+    
+    <!-- Time Span Dropdown -->
+    <div class="mb-8 flex justify-center">
+      <select id="timeSpan" class="p-3 rounded-md bg-white text-blue-900 text-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="15days">15 Days</option>
+        <option value="monthly">Monthly</option>
+        <option value="yearly">Yearly</option>
+      </select>
     </div>
-    <script src="sales.js"></script>
+    
+    <!-- Sales Graph -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+      <div id="loading" class="text-center text-blue-900">Loading...</div>
+      <div id="noData" class="hidden text-center text-blue-900">No sales data available</div>
+      <canvas id="salesChart" class="w-full h-80 hidden"></canvas>
+    </div>
+    
+    <!-- Metric Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="bg-white p-6 rounded-lg shadow-md text-center">
+        <h2 class="text-lg font-medium text-blue-900">Total Sales</h2>
+        <p id="totalSales" class="text-2xl font-semibold text-green-700">₹0.00</p>
+      </div>
+      <div class="bg-white p-6 rounded-lg shadow-md text-center">
+        <h2 class="text-lg font-medium text-blue-900">Gross Profit</h2>
+        <p id="totalProfit" class="text-2xl font-semibold text-green-700">₹0.00</p>
+      </div>
+      <div class="bg-white p-6 rounded-lg shadow-md text-center">
+        <h2 class="text-lg font-medium text-blue-900">GST Collected</h2>
+        <p id="totalGST" class="text-2xl font-semibold text-green-700">₹0.00</p>
+      </div>
+      <div class="bg-white p-6 rounded-lg shadow-md text-center">
+        <h2 class="text-lg font-medium text-blue-900">Discounts Given</h2>
+        <p id="totalDiscounts" class="text-2xl font-semibold text-green-700">₹0.00</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <script src="sales.js"></script>
 </body>
 </html>

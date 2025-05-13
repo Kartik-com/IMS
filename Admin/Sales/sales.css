@@ -1,38 +1,56 @@
-.transaction-card {
-    background-color: #ffffff;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+/* Professional styles for sales dashboard */
+.bg-gray-100 {
+  background-color: #F7FAFC; /* Light gray background */
 }
 
-.transaction-details {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
+.container {
+  max-width: 1280px;
 }
 
-.transaction-details.show {
-    max-height: 1000px; /* Adjust as needed */
+h1 {
+  font-size: 2.25rem;
+  line-height: 1.3;
 }
 
-.details-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 16px;
+select {
+  font-size: 1.125rem;
+  padding: 0.75rem;
+  width: 220px;
 }
 
-.details-table th,
-.details-table td {
-    padding: 8px;
-    text-align: left;
-    border-bottom: 1px solid #E5E7EB;
+canvas {
+  max-height: 320px;
 }
 
-.details-table th {
-    font-weight: 600;
-    color: #000000;
+.shadow-md {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
-.details-table tbody tr:nth-child(even) {
-    background-color: #F9FAFB;
+.text-blue-900 {
+  color: #1A365D; /* Deep blue */
+}
+
+.text-green-700 {
+  color: #2F855A; /* Muted green */
+}
+
+.border-gray-300 {
+  border-color: #E2E8F0; /* Light gray */
+}
+
+.focus\:ring-blue-500:focus {
+  --tw-ring-color: #3B82F6; /* Blue ring on focus */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .grid-cols-4 {
+    grid-template-columns: 1fr 1fr;
+  }
 }

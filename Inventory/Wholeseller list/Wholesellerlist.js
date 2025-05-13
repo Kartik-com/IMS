@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     barcode: item.barcode || "N/A",
                                     buying_cost: parseFloat(item.buying_cost) || 0,
                                     mrp: parseFloat(item.mrp || item.MRP || item.retail_price) || 0,
-                                    gst: parseFloat(item.gst_percentage || item.gst_rate || item.tax_rate) || 0,
+                                    gst: parseFloat(item.gstPercentage || item.gst_rate || item.tax_rate) || 0,
                                     quantity: parseInt(item.quantity) || 0,
                                     unit: item.unit || "N/A"
                                 };
@@ -55,18 +55,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
                     console.log(`Purchase items for wholesaler ${wholesaler.name}:`, purchaseItems);
 
-                    // Map items to include purchase details using barcode for matching
+                    // Map items to include purchase details, prioritizing wholesaler item data for MRP and GST
                     const detailedItems = items.map(item => {
                         const purchaseItem = purchaseItems.find(pi => pi.barcode === item.barcode) || {};
                         console.log(`Matching item ${item.name} (barcode: ${item.barcode}) with purchase item:`, purchaseItem);
                         return {
-                            name: item.name,
-                            barcode: item.barcode || "N/A",
-                            buying_cost: purchaseItem.buying_cost || 0,
-                            mrp: purchaseItem.mrp || 0,
-                            gst: purchaseItem.gst || 0,
-                            quantity: purchaseItem.quantity || 0,
-                            unit: purchaseItem.unit || "N/A"
+                            name: item.name || purchaseItem.name || "Unknown Item",
+                            barcode: item.barcode || purchaseItem.barcode || "N/A",
+                            buying_cost: purchaseItem.buying_cost || item.buyingCost || 0,
+                            mrp: item.MRP || purchaseItem.mrp || 0,
+                            gst: item.gstPercentage || purchaseItem.gst || 0,
+                            quantity: purchaseItem.quantity || item.stock || 0,
+                            unit: item.unit || purchaseItem.unit || "N/A"
                         };
                     });
                     return { ...wholesaler, items: detailedItems };
@@ -80,6 +80,27 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Format date to DD-MM-YYYY
+    function formatDate(dateStr) {
+        if (!dateStr) {
+            console.log("Date string is empty or null:", dateStr);
+            return new Date().toISOString().split("T")[0]; // Default to today if date is missing
+        }
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                console.log("Invalid date format:", dateStr);
+                return new Date().toISOString().split("T")[0]; // Default to today if invalid
+            }
+            const formatted = `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
+            console.log(`Formatted date for ${dateStr}:`, formatted);
+            return formatted;
+        } catch (error) {
+            console.error("Error formatting date:", dateStr, error);
+            return new Date().toISOString().split("T")[0]; // Default to today if error
+        }
+    }
+
     // Display wholesalers in the table
     function displayWholesalers(wholesalers) {
         wholesalerTableBody.innerHTML = "";
@@ -90,10 +111,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${wholesaler.name}</td>
                 <td>${wholesaler.contact_number}</td>
                 <td>${wholesaler.tax_id || "N/A"}</td>
-                <td>${wholesaler.createdAt || "N/A"}</td>
+                <td>${formatDate(wholesaler.createdAt)}</td>
                 <td>₹${wholesaler.udhari.toFixed(2)}</td>
                 <td class="actions-cell">
-                    <button class="action-btn edit-btn" onclick="editWholesaler(${wholesaler.id}, '${wholesaler.name}', '${wholesaler.specialty_product || ""}', '${wholesaler.contact_number}', '${wholesaler.email || ""}', '${wholesaler.address || ""}', '${wholesaler.tax_id || ""}', ${wholesaler.moq || null}, ${wholesaler.total_amount}, ${wholesaler.udhari}, '${wholesaler.createdAt || ""}')">Edit</button>
+                    <button class="action-btn edit-btn" onclick="editWholesaler(${wholesaler.id}, '${wholesaler.name}', '${wholesaler.specialty_product || ""}', '${wholesaler.contact_number}', '${wholesaler.email || ""}', '${wholesaler.address || ""}', '${wholesaler.tax_id || ""}', ${wholesaler.moq || null}, ${wholesaler.total_amount}, ${wholesaler.udhari}, '${wholesaler.createdAt || new Date().toISOString().split("T")[0]}')">Edit</button>
                     <button class="action-btn delete-btn" onclick="deleteWholesaler(${wholesaler.id})">Delete</button>
                 </td>
             `;
@@ -120,30 +141,6 @@ document.addEventListener("DOMContentLoaded", () => {
             expandedRow.detailsRow.remove();
             expandedRow = null;
         }
-
-        // Format the date to DD-MM-YYYY
-        const formatDate = (dateStr) => {
-            if (!dateStr) {
-                console.log("Date string is empty or null:", dateStr);
-                return "N/A";
-            }
-            try {
-                const date = new Date(dateStr);
-                if (isNaN(date.getTime())) {
-                    console.log("Invalid date format:", dateStr);
-                    return "N/A";
-                }
-                const formatted = `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
-                console.log(`Formatted date for ${dateStr}:`, formatted);
-                return formatted;
-            } catch (error) {
-                console.error("Error formatting date:", dateStr, error);
-                return "N/A";
-            }
-        };
-
-        // Log the raw createdAt value
-        console.log(`Raw createdAt for wholesaler ${wholesaler.name}:`, wholesaler.createdAt);
 
         // Create and show new details row
         const detailsRow = document.createElement("tr");
@@ -199,17 +196,20 @@ document.addEventListener("DOMContentLoaded", () => {
                             </tr>
                         </thead>
                         <tbody>
-                            ${wholesaler.items.length > 0 ? wholesaler.items.map(item => `
-                                <tr>
-                                    <td>${item.barcode || "N/A"}</td>
-                                    <td>${item.name || "Unknown Item"}</td>
-                                    <td>₹${item.buying_cost.toFixed(2)}</td>
-                                    <td>₹${item.mrp > 0 ? item.mrp.toFixed(2) : "N/A"}</td>
-                                    <td>${item.gst > 0 ? item.gst.toFixed(1) : "N/A"}</td>
-                                    <td>${item.quantity}</td>
-                                    <td>${item.unit || "N/A"}</td>
-                                </tr>
-                            `).join('') : '<tr><td colspan="7">No items</td></tr>'}
+                            ${wholesaler.items.length > 0 ? wholesaler.items.map(item => {
+                                console.log("Wholesaler item:", item);
+                                return `
+                                    <tr>
+                                        <td>${item.barcode || "N/A"}</td>
+                                        <td>${item.name || "Unknown Item"}</td>
+                                        <td>₹${item.buying_cost.toFixed(2)}</td>
+                                        <td>₹${item.mrp > 0 ? item.mrp.toFixed(2) : "N/A"}</td>
+                                        <td>${item.gst > 0 ? item.gst.toFixed(1) : "N/A"}</td>
+                                        <td>${item.quantity}</td>
+                                        <td>${item.unit || "N/A"}</td>
+                                    </tr>
+                                `;
+                            }).join('') : '<tr><td colspan="7">No items</td></tr>'}
                         </tbody>
                     </table>
                 </div>
@@ -260,7 +260,9 @@ document.addEventListener("DOMContentLoaded", () => {
         form.querySelector("#wholesalerMOQ").value = moq || "";
         form.querySelector("#totalAmount").value = total_amount.toFixed(2);
         form.querySelector("#udhari").value = udhari.toFixed(2);
-        form.querySelector("#createdAt").value = createdAt || "";
+        // Ensure createdAt is in YYYY-MM-DD format
+        const dateToSet = createdAt ? new Date(createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+        form.querySelector("#createdAt").value = dateToSet;
         wholesalerModal.style.display = "block";
     };
 
@@ -296,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 total_amount: parseFloat(form.querySelector("#totalAmount").value) || 0.0,
                 udhari: parseFloat(form.querySelector("#udhari").value) || 0.0,
                 specialty_product: form.querySelector("#specialtyProduct").value.trim() || null,
-                createdAt: form.querySelector("#createdAt").value || null,
+                createdAt: form.querySelector("#createdAt").value || new Date().toISOString().split("T")[0],
             };
             try {
                 if (!wholesaler.id) {

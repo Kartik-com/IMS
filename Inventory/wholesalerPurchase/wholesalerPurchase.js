@@ -299,7 +299,7 @@ function calculateTotals() {
   }
   tab.discount = discount;
 
-  const totalCost = cost - discount;
+  const totalCost = cost + gst - discount;
   tab.amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
   const balance = totalCost - tab.amountPaid;
 
@@ -333,6 +333,20 @@ async function savePurchase() {
   if (tab.purchaseItems.length === 0) {
     alert('Please add at least one item');
     return;
+  }
+
+  // Check if amountPaid is 0 and paymentMethod is not Udhari
+  if (tab.amountPaid === 0 && tab.paymentMethod !== 'Udhari') {
+    const confirmUdhari = confirm('No payment has been made. Do you want to proceed with this purchase as Udhari?');
+    if (confirmUdhari) {
+      tab.paymentMethod = 'Udhari';
+      document.getElementById('paymentMethod').value = 'Udhari';
+      document.getElementById('amountPaid').value = '0';
+      document.getElementById('amountPaid').disabled = true;
+      tab.amountPaid = 0;
+    } else {
+      return; // Exit if user cancels
+    }
   }
 
   const purchaseData = {
