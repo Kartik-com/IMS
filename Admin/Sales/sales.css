@@ -20,6 +20,7 @@ select {
 
 canvas {
   max-height: 320px;
+  margin-top: 40px; /* Add margin to prevent overlap with data labels */
 }
 
 .shadow-md {
