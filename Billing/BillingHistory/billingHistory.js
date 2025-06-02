@@ -60,7 +60,9 @@ async function loadBills() {
         return false;
       }
     });
-    console.log('Filtered bills:', bills);
+    // Sort bills by createdAt in descending order (latest first)
+    bills.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    console.log('Filtered and sorted bills:', bills);
     const tableBody = document.getElementById('billsTableBody');
     tableBody.innerHTML = '';
     bills.forEach(bill => renderBillRow(bill));

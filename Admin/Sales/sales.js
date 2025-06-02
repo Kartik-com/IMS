@@ -8,21 +8,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const salesChartCanvas = document.getElementById('salesChart');
   const loadingDiv = document.getElementById('loading');
   const noDataDiv = document.getElementById('noData');
+  const customStartDateInput = document.getElementById('customStartDate');
+  const customEndDateInput = document.getElementById('customEndDate');
+  const applyCustomRangeButton = document.getElementById('applyCustomRange');
   let salesChart;
 
-  // Initialize Chart.js
+  // Initialize Chart.js with numeric values on bars
   const initChart = (labels, data) => {
     if (salesChart) salesChart.destroy();
     salesChart = new Chart(salesChartCanvas, {
       type: 'bar',
       data: {
-        labels: labels,
+        labels,
         datasets: [{
           label: 'Sales (₹)',
-          data: data,
-          backgroundColor: '#3B82F6',
-          borderColor: '#1A365D',
-          borderWidth: 1
+          data,
+          backgroundColor: '#60A5FA', // Light blue for bars
+          borderColor: '#2B6CB0', // Darker blue border
+          borderWidth: 2
         }]
       },
       options: {
@@ -31,150 +34,132 @@ document.addEventListener('DOMContentLoaded', () => {
         scales: {
           y: {
             beginAtZero: true,
-            title: { display: true, text: 'Sales Amount (₹)', font: { size: 14, weight: '500' }, color: '#1A365D' },
+            title: {
+              display: true,
+              text: 'Sales Amount (₹)',
+              font: { size: 16, weight: '600' },
+              color: '#2B6CB0'
+            },
             grid: { color: '#E2E8F0' },
-            padding: { top: 40 }
+            ticks: {
+              font: { size: 14 },
+              color: '#2B6CB0',
+              callback: (value) => `₹${value.toFixed(2)}`
+            }
           },
           x: {
-            title: { display: true, text: 'Time Period', font: { size: 14, weight: '500' }, color: '#1A365D' },
-            grid: { display: false }
+            title: {
+              display: true,
+              text: 'Time Period',
+              font: { size: 16, weight: '600' },
+              color: '#2B6CB0'
+            },
+            grid: { display: false },
+            ticks: { font: { size: 14 }, color: '#2B6CB0' }
           }
         },
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#1A365D',
+            enabled: true,
+            backgroundColor: '#2B6CB0',
             titleFont: { size: 14 },
             bodyFont: { size: 14 },
-            callbacks: { label: (context) => `₹${context.parsed.y.toFixed(2)}` }
+            callbacks: { label: (context) => `Sales: ₹${context.parsed.y.toFixed(2)}` }
           },
           datalabels: {
             anchor: 'end',
             align: 'top',
             formatter: (value) => `₹${value.toFixed(2)}`,
-            font: { size: 12, weight: '600' },
-            color: '#1A365D',
-            offset: 10,
-            clip: false
+            font: { size: 14, weight: 'bold' },
+            color: '#2F855A', // Green for data labels
+            offset: 8
           }
         },
         layout: {
-          padding: { top: 40 }
+          padding: { top: 30, bottom: 20 }
         }
       }
     });
   };
 
-  // Parse date with extended format support
+  // Parse date with robust handling
   const parseDate = (dateStr) => {
-    let date;
-    console.log(`Parsing date: ${dateStr}`);
-    // Handle null or undefined
     if (!dateStr) {
-      console.error(`Date is null or undefined`);
+      console.warn('Date is null or undefined');
       return null;
     }
-    // Try ISO format
-    date = new Date(dateStr);
-    if (!isNaN(date.getTime())) {
-      console.log(`Parsed ISO date: ${dateStr} -> ${date}`);
-      return date;
-    }
-    // Try YYYY-MM-DD, DD-MM-YYYY, MM-DD-YYYY
+    let date = new Date(dateStr);
+    if (!isNaN(date.getTime())) return date;
+
+    // Handle YYYY-MM-DD or DD-MM-YYYY
     const parts = dateStr.match(/(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})/);
     if (parts) {
-      // YYYY-MM-DD
       if (parseInt(parts[1]) > 31) {
         date = new Date(`${parts[1]}-${parts[2]}-${parts[3]}`);
-      }
-      // DD-MM-YYYY
-      else if (parseInt(parts[3]) > 31) {
+      } else if (parseInt(parts[3]) > 31) {
         date = new Date(`${parts[3]}-${parts[2]}-${parts[1]}`);
-      }
-      // MM-DD-YYYY
-      else {
+      } else {
         date = new Date(`${parts[3]}-${parts[1]}-${parts[2]}`);
       }
-      if (!isNaN(date.getTime())) {
-        console.log(`Parsed custom date: ${dateStr} -> ${date}`);
-        return date;
-      }
+      if (!isNaN(date.getTime())) return date;
     }
-    // Try textual formats (e.g., "May 13, 2025")
+
+    // Handle textual formats (e.g., "May 13, 2025")
     const textual = dateStr.match(/(\w+)\s+(\d{1,2}),\s+(\d{4})/);
     if (textual) {
       date = new Date(`${textual[1]} ${textual[2]}, ${textual[3]}`);
-      if (!isNaN(date.getTime())) {
-        console.log(`Parsed textual date: ${dateStr} -> ${date}`);
-        return date;
-      }
+      if (!isNaN(date.getTime())) return date;
     }
-    // Try Unix timestamp (milliseconds or seconds)
+
+    // Handle Unix timestamps
     if (!isNaN(dateStr)) {
       const num = parseInt(dateStr);
       date = new Date(num > 9999999999 ? num : num * 1000);
-      if (!isNaN(date.getTime())) {
-        console.log(`Parsed timestamp: ${dateStr} -> ${date}`);
-        return date;
-      }
+      if (!isNaN(date.getTime())) return date;
     }
-    console.error(`Invalid date format: ${dateStr}`);
+
+    console.warn(`Invalid date format: ${dateStr}`);
     return null;
   };
 
-  // Filter bills by time span
-  const filterBillsByTimeSpan = (bills, timeSpan, startDate, endDate) => {
-    console.log(`Filtering bills for ${timeSpan}, start: ${startDate}, end: ${endDate}`);
-    const filtered = bills.filter(bill => {
+  // Filter bills by date range
+  const filterBillsByDateRange = (bills, startDate, endDate) => {
+    return bills.filter(bill => {
       const billDate = parseDate(bill.createdAt);
       if (!billDate || isNaN(billDate.getTime())) {
         console.warn(`Skipping bill ID ${bill.id} due to invalid date: ${bill.createdAt}`);
         return false;
       }
-      const inRange = billDate >= startDate && billDate <= endDate;
-      if (!inRange) {
-        console.log(`Bill ID ${bill.id} date ${billDate} outside range ${startDate} - ${endDate}`);
-      }
-      return inRange;
+      return billDate >= startDate && billDate <= endDate;
     });
-    console.log(`Filtered ${filtered.length} bills for ${timeSpan}`);
-    return filtered;
   };
 
   // Fetch and process sales data
-  const fetchSalesData = async (timeSpan) => {
+  const fetchSalesData = async (timeSpan, customStartDate = null, customEndDate = null) => {
     try {
       loadingDiv.classList.remove('hidden');
       noDataDiv.classList.add('hidden');
       salesChartCanvas.classList.add('hidden');
 
       const bills = await ipcRenderer.invoke('billing:getBills');
-      console.log(`Fetched ${bills.length} bills`);
-
-      // Filter valid bills (aligned with billingHistory.js)
       const validBills = bills.filter(bill => {
         try {
           const billData = JSON.parse(bill.data);
           const billDate = parseDate(bill.createdAt);
-          const isValid = billData &&
-                         typeof billData.totalCost === 'number' &&
-                         typeof billData.discount === 'number' &&
-                         typeof billData.amountPaid === 'number' &&
-                         typeof billData.change === 'number' &&
-                         billDate && !isNaN(billDate.getTime());
-          if (!isValid) {
-            console.warn(`Invalid bill ID ${bill.id}: missing required fields or invalid date`);
-          }
-          return isValid;
+          return billData &&
+                 typeof billData.totalCost === 'number' &&
+                 typeof billData.discount === 'number' &&
+                 typeof billData.amountPaid === 'number' &&
+                 typeof billData.change === 'number' &&
+                 billDate && !isNaN(billDate.getTime());
         } catch (error) {
-          console.error(`Invalid bill ID ${bill.id}: ${error.message}`);
+          console.warn(`Invalid bill ID ${bill.id}: ${error.message}`);
           return false;
         }
       });
-      console.log(`Valid bills: ${validBills.length}`);
 
       if (!validBills.length) {
-        console.error(`No valid bills for ${timeSpan}`);
         loadingDiv.classList.add('hidden');
         noDataDiv.classList.remove('hidden');
         initChart(['No Data'], [0]);
@@ -184,146 +169,180 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const today = new Date();
       const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-      let startDate, endDate;
-      let labels = [];
-      let salesData = [];
+      let startDate, endDate, labels = [], salesData = [];
 
-      switch (timeSpan) {
-        case 'daily':
-          startDate = new Date(today);
-          startDate.setDate(today.getDate() - 6);
-          startDate.setHours(0, 0, 0, 0);
-          endDate = endOfToday;
-          labels = Array.from({ length: 7 }, (_, i) => {
+      if (timeSpan === 'custom' && customStartDate && customEndDate) {
+        startDate = new Date(customStartDate);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(customEndDate);
+        endDate.setHours(23, 59, 59, 999);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || startDate > endDate) {
+          console.warn('Invalid custom date range');
+          loadingDiv.classList.add('hidden');
+          noDataDiv.classList.remove('hidden');
+          initChart(['Invalid Date Range'], [0]);
+          updateMetrics([], timeSpan);
+          return;
+        }
+
+        // Calculate days between start and end
+        const dayDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+        const maxBars = 12; // Limit to 12 bars for readability
+        let bucketSize;
+
+        if (dayDiff <= 7) {
+          // Daily buckets
+          bucketSize = 1;
+          labels = Array.from({ length: dayDiff }, (_, i) => {
             const date = new Date(startDate);
             date.setDate(startDate.getDate() + i);
             return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
           });
-          salesData = Array(7).fill(0);
-          validBills.forEach(bill => {
-            const billData = JSON.parse(bill.data);
-            const billDate = parseDate(bill.createdAt);
-            if (billDate && billDate >= startDate && billDate <= endDate) {
-              const dayIndex = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24));
-              if (dayIndex >= 0 && dayIndex < 7) {
-                const amount = parseFloat(billData.totalCost) || 0;
-                salesData[dayIndex] += amount;
-                console.log(`Bill ID ${bill.id} added to day ${labels[dayIndex]}: ₹${amount}`);
-              }
-            }
-          });
-          break;
-        case 'weekly':
-          startDate = new Date(today);
-          startDate.setDate(today.getDate() - 27);
-          startDate.setHours(0, 0, 0, 0);
-          endDate = endOfToday;
-          labels = Array.from({ length: 4 }, (_, i) => `Week ${i + 1}`);
-          salesData = Array(4).fill(0);
-          validBills.forEach(bill => {
-            const billData = JSON.parse(bill.data);
-            const billDate = parseDate(bill.createdAt);
-            if (billDate && billDate >= startDate && billDate <= endDate) {
-              const weekIndex = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24 * 7));
-              if (weekIndex >= 0 && weekIndex < 4) {
-                const amount = parseFloat(billData.totalCost) || 0;
-                salesData[weekIndex] += amount;
-                console.log(`Bill ID ${bill.id} added to ${labels[weekIndex]}: ₹${amount}`);
-              }
-            }
-          });
-          break;
-        case '15days':
-          startDate = new Date(today);
-          startDate.setDate(today.getDate() - 14);
-          startDate.setHours(0, 0, 0, 0);
-          endDate = endOfToday;
-          labels = ['Days 1-5', 'Days 6-10', 'Days 11-15'];
-          salesData = Array(3).fill(0);
-          validBills.forEach(bill => {
-            const billData = JSON.parse(bill.data);
-            const billDate = parseDate(bill.createdAt);
-            if (billDate && billDate >= startDate && billDate <= endDate) {
-              const dayIndex = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24));
-              if (dayIndex >= 0 && dayIndex < 5) {
-                const amount = parseFloat(billData.totalCost) || 0;
-                salesData[0] += amount;
-                console.log(`Bill ID ${bill.id} added to ${labels[0]}: ₹${amount}`);
-              }
-              else if (dayIndex < 10) {
-                const amount = parseFloat(billData.totalCost) || 0;
-                salesData[1] += amount;
-                console.log(`Bill ID ${bill.id} added to ${labels[1]}: ₹${amount}`);
-              }
-              else if (dayIndex < 15) {
-                const amount = parseFloat(billData.totalCost) || 0;
-                salesData[2] += amount;
-                console.log(`Bill ID ${bill.id} added to ${labels[2]}: ₹${amount}`);
-              }
-            }
-          });
-          break;
-        case 'monthly':
-          startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
-          startDate.setHours(0, 0, 0, 0);
-          endDate = endOfToday;
-          labels = Array.from({ length: 12 }, (_, i) => {
-            const date = new Date(startDate);
-            date.setMonth(startDate.getMonth() + i);
+          salesData = Array(dayDiff).fill(0);
+        } else if (dayDiff <= 31) {
+          // Weekly buckets
+          bucketSize = Math.ceil(dayDiff / Math.min(dayDiff, maxBars));
+          const numBuckets = Math.ceil(dayDiff / bucketSize);
+          labels = Array.from({ length: numBuckets }, (_, i) => `Days ${i * bucketSize + 1}-${Math.min((i + 1) * bucketSize, dayDiff)}`);
+          salesData = Array(numBuckets).fill(0);
+        } else {
+          // Monthly buckets
+          const startYear = startDate.getFullYear();
+          const startMonth = startDate.getMonth();
+          const endYear = endDate.getFullYear();
+          const endMonth = endDate.getMonth();
+          const monthDiff = (endYear - startYear) * 12 + endMonth - startMonth + 1;
+          const monthsToShow = Math.min(monthDiff, maxBars);
+          labels = Array.from({ length: monthsToShow }, (_, i) => {
+            const date = new Date(startYear, startMonth + i, 1);
             return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
           });
-          salesData = Array(12).fill(0);
-          validBills.forEach(bill => {
-            const billData = JSON.parse(bill.data);
-            const billDate = parseDate(bill.createdAt);
-            if (billDate && billDate >= startDate && billDate <= endDate) {
+          salesData = Array(monthsToShow).fill(0);
+          bucketSize = 'month';
+        }
+
+        filterBillsByDateRange(validBills, startDate, endDate).forEach(bill => {
+          const billData = JSON.parse(bill.data);
+          const billDate = parseDate(bill.createdAt);
+          let index;
+
+          if (bucketSize === 1) {
+            index = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24));
+          } else if (bucketSize === 'month') {
+            const startYear = startDate.getFullYear();
+            const startMonth = startDate.getMonth();
+            index = (billDate.getFullYear() - startYear) * 12 + billDate.getMonth() - startMonth;
+          } else {
+            index = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24) / bucketSize);
+          }
+
+          if (index >= 0 && index < salesData.length) {
+            salesData[index] += parseFloat(billData.totalCost) || 0;
+          }
+        });
+      } else {
+        switch (timeSpan) {
+          case 'daily':
+            startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = endOfToday;
+            labels = Array.from({ length: 7 }, (_, i) => {
+              const date = new Date(startDate);
+              date.setDate(startDate.getDate() + i);
+              return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+            });
+            salesData = Array(7).fill(0);
+            filterBillsByDateRange(validBills, startDate, endDate).forEach(bill => {
+              const billData = JSON.parse(bill.data);
+              const billDate = parseDate(bill.createdAt);
+              const dayIndex = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24));
+              if (dayIndex >= 0 && dayIndex < 7) {
+                salesData[dayIndex] += parseFloat(billData.totalCost) || 0;
+              }
+            });
+            break;
+          case '15days':
+            startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 14);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = endOfToday;
+            labels = ['Days 1-5', 'Days 6-10', 'Days 11-15'];
+            salesData = Array(3).fill(0);
+            filterBillsByDateRange(validBills, startDate, endDate).forEach(bill => {
+              const billData = JSON.parse(bill.data);
+              const billDate = parseDate(bill.createdAt);
+              const dayIndex = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24));
+              if (dayIndex >= 0 && dayIndex < 5) {
+                salesData[0] += parseFloat(billData.totalCost) || 0;
+              } else if (dayIndex < 10) {
+                salesData[1] += parseFloat(billData.totalCost) || 0;
+              } else if (dayIndex < 15) {
+                salesData[2] += parseFloat(billData.totalCost) || 0;
+              }
+            });
+            break;
+          case 'weekly':
+            startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 27);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = endOfToday;
+            labels = Array.from({ length: 4 }, (_, i) => `Week ${i + 1}`);
+            salesData = Array(4).fill(0);
+            filterBillsByDateRange(validBills, startDate, endDate).forEach(bill => {
+              const billData = JSON.parse(bill.data);
+              const billDate = parseDate(bill.createdAt);
+              const weekIndex = Math.floor((billDate - startDate) / (1000 * 60 * 60 * 24 * 7));
+              if (weekIndex >= 0 && weekIndex < 4) {
+                salesData[weekIndex] += parseFloat(billData.totalCost) || 0;
+              }
+            });
+            break;
+          case 'monthly':
+            startDate = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = endOfToday;
+            labels = Array.from({ length: 12 }, (_, i) => {
+              const date = new Date(startDate);
+              date.setMonth(startDate.getMonth() + i);
+              return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+            });
+            salesData = Array(12).fill(0);
+            filterBillsByDateRange(validBills, startDate, endDate).forEach(bill => {
+              const billData = JSON.parse(bill.data);
+              const billDate = parseDate(bill.createdAt);
               const monthIndex = (billDate.getFullYear() - startDate.getFullYear()) * 12 + billDate.getMonth() - startDate.getMonth();
               if (monthIndex >= 0 && monthIndex < 12) {
-                const amount = parseFloat(billData.totalCost) || 0;
-                salesData[monthIndex] += amount;
-                console.log(`Bill ID ${bill.id} added to month ${labels[monthIndex]}: ₹${amount}`);
-              } else {
-                console.warn(`Bill ID ${bill.id} monthIndex ${monthIndex} out of range for date ${billDate}`);
+                salesData[monthIndex] += parseFloat(billData.totalCost) || 0;
               }
-            } else {
-              console.log(`Bill ID ${bill.id} excluded: date ${billDate} outside range ${startDate} - ${endDate}`);
-            }
-          });
-          break;
-        case 'yearly':
-          startDate = new Date(2020, 0, 1);
-          endDate = new Date(2026, 0, 1);
-          labels = ['2020', '2021', '2022', '2023', '2024', '2025'];
-          salesData = Array(6).fill(0);
-          validBills.forEach(bill => {
-            const billData = JSON.parse(bill.data);
-            const billDate = parseDate(bill.createdAt);
-            if (billDate && billDate >= startDate && billDate < endDate) {
+            });
+            break;
+          case 'yearly':
+            startDate = new Date(2020, 0, 1);
+            endDate = new Date(2026, 0, 1);
+            labels = ['2020', '2021', '2022', '2023', '2024', '2025'];
+            salesData = Array(6).fill(0);
+            filterBillsByDateRange(validBills, startDate, endDate).forEach(bill => {
+              const billData = JSON.parse(bill.data);
+              const billDate = parseDate(bill.createdAt);
               const yearIndex = billDate.getFullYear() - 2020;
               if (yearIndex >= 0 && yearIndex < 6) {
-                const amount = parseFloat(billData.totalCost) || 0;
-                salesData[yearIndex] += amount;
-                console.log(`Bill ID ${bill.id} added to year ${labels[yearIndex]}: ₹${amount}`);
+                salesData[yearIndex] += parseFloat(billData.totalCost) || 0;
               }
-            }
-          });
-          break;
+            });
+            break;
+        }
       }
-
-      console.log(`Sales data for ${timeSpan}:`, salesData);
 
       loadingDiv.classList.add('hidden');
       if (salesData.every(val => val === 0)) {
-        console.warn(`No sales data for ${timeSpan}`);
         noDataDiv.classList.remove('hidden');
         initChart(['No Sales Data'], [0]);
       } else {
         salesChartCanvas.classList.remove('hidden');
         initChart(labels, salesData);
       }
-      updateMetrics(validBills, timeSpan, startDate, endDate);
+      updateMetrics(validBills, startDate, endDate);
     } catch (err) {
-      console.error(`Error in ${timeSpan}: ${err.message}`);
+      console.error(`Error fetching sales data: ${err.message}`);
       loadingDiv.classList.add('hidden');
       noDataDiv.classList.remove('hidden');
       initChart(['Error'], [0]);
@@ -331,14 +350,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Update metric cards with caching
-  const updateMetrics = async (bills, timeSpan, startDate, endDate) => {
-    const filteredBills = filterBillsByTimeSpan(bills, timeSpan, startDate, endDate);
-    console.log(`Calculating metrics for ${timeSpan} with ${filteredBills.length} bills`);
-    let totalSales = 0;
-    let totalProfit = 0;
-    let totalGST = 0;
-    let totalDiscounts = 0;
+  // Update metric cards
+  const updateMetrics = async (bills, startDate, endDate) => {
+    const filteredBills = filterBillsByDateRange(bills, startDate, endDate);
+    let totalSales = 0, totalProfit = 0, totalGST = 0, totalDiscounts = 0;
     const itemCache = new Map();
 
     for (const bill of filteredBills) {
@@ -346,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         billData = JSON.parse(bill.data);
       } catch (error) {
-        console.error(`Invalid bill data ID ${bill.id}: ${error.message}`);
+        console.warn(`Invalid bill data ID ${bill.id}: ${error.message}`);
         continue;
       }
 
@@ -354,7 +369,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const discountAmount = parseFloat(billData.discount) || 0;
       totalSales += salesAmount;
       totalDiscounts += discountAmount;
-      console.log(`Bill ID ${bill.id} contributes: Sales=₹${salesAmount}, Discount=₹${discountAmount}`);
 
       if (billData.totalItems && Array.isArray(billData.totalItems)) {
         for (const item of billData.totalItems) {
@@ -369,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
               itemDetails = await ipcRenderer.invoke('inventory:getItemByBarcode', item.barcode);
               itemCache.set(item.barcode, itemDetails || {});
             } catch (error) {
-              console.error(`Error fetching item ${item.barcode}: ${error.message}`);
+              console.warn(`Error fetching item ${item.barcode}: ${error.message}`);
               continue;
             }
           }
@@ -379,13 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const gst = (parseFloat(item.price) * (parseFloat(itemDetails.gstPercentage) || 0) / 100) * (item.quantity || 1);
             totalProfit += profit || 0;
             totalGST += gst || 0;
-            console.log(`Item ${item.barcode} in bill ID ${bill.id}: Profit=₹${profit}, GST=₹${gst}`);
           }
         }
       }
     }
-
-    console.log(`Metrics for ${timeSpan}: Sales=₹${totalSales.toFixed(2)}, Profit=₹${totalProfit.toFixed(2)}, GST=₹${totalGST.toFixed(2)}, Discounts=₹${totalDiscounts.toFixed(2)}`);
 
     document.getElementById('totalSales').textContent = `₹${totalSales.toFixed(2)}`;
     document.getElementById('totalProfit').textContent = `₹${totalProfit.toFixed(2)}`;
@@ -395,17 +406,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Handle time span change
   timeSpanSelect.addEventListener('change', () => {
-    console.log(`Time span changed to ${timeSpanSelect.value}`);
+    customStartDateInput.value = '';
+    customEndDateInput.value = '';
     fetchSalesData(timeSpanSelect.value);
+  });
+
+  // Handle custom date range
+  applyCustomRangeButton.addEventListener('click', () => {
+    const startDate = customStartDateInput.value;
+    const endDate = customEndDateInput.value;
+    if (startDate && endDate) {
+      timeSpanSelect.value = ''; // Deselect predefined time span
+      fetchSalesData('custom', startDate, endDate);
+    }
   });
 
   // Real-time updates
   ipcRenderer.on('billing:newBill', () => {
-    console.log('New bill received, refreshing data');
-    fetchSalesData(timeSpanSelect.value);
+    if (customStartDateInput.value && customEndDateInput.value) {
+      fetchSalesData('custom', customStartDateInput.value, customEndDateInput.value);
+    } else {
+      fetchSalesData(timeSpanSelect.value);
+    }
   });
 
-  // Initial fetch
-  console.log('Initial data fetch');
+  // Initial fetch with default time span
   fetchSalesData(timeSpanSelect.value);
 });

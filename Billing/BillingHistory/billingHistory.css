@@ -2,13 +2,13 @@ body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 20px;
-  background-color: #f4f4f4;
+  background-color: #ffffff; /* White background for main page */
 }
 
 .container {
   max-width: 100%;
   margin: 0 auto;
-  background: #fff;
+  background: #ffffff; /* White background for container */
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -17,6 +17,7 @@ body {
 h1 {
   font-size: 24px;
   margin-bottom: 20px;
+  color: #1e3a8a; /* Dark blue for header */
 }
 
 .search-bar {
@@ -29,7 +30,7 @@ h1 {
 #searchByNameMobile {
   padding: 10px;
   width: 300px;
-  border: 1px solid #ccc;
+  border: 1px solid #bfdbfe; /* Light blue border */
   border-radius: 4px;
   font-size: 16px;
 }
@@ -47,23 +48,24 @@ table {
 th, td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #e5e7eb; /* Light gray for neutral borders */
 }
 
 th {
-  background-color: #f9f9f9;
+  background-color: #dbeafe; /* Light blue for table headers */
   font-weight: bold;
+  color: #1e3a8a; /* Dark blue for text */
 }
 
 tr:hover:not(.details-row) {
-  background-color: #f1f1f1;
+  background-color: #eff6ff; /* Very light blue for hover */
   cursor: pointer;
 }
 
 .details-row td {
   padding: 25px;
-  background-color: #fafafa;
-  border: 2px solid #e0e0e0;
+  background-color: #f7fafc; /* Very light gray for details row */
+  border: 2px solid #bfdbfe; /* Light blue border */
   border-radius: 8px;
 }
 
@@ -71,7 +73,7 @@ tr:hover:not(.details-row) {
   font-size: 22px;
   margin-top: 25px;
   margin-bottom: 15px;
-  color: #2e7d32; /* Darker green for the header */
+  color: #166534; /* Dark green for items header */
   font-weight: bold;
 }
 
@@ -85,28 +87,28 @@ tr:hover:not(.details-row) {
 .summary-table th, .summary-table td,
 .items-table th, .items-table td {
   padding: 18px;
-  border: 1px solid #d0d0d0;
+  border: 1px solid #d1d5db; /* Light gray for neutral borders */
   font-size: 18px;
   text-align: left;
-  color: #333;
+  color: #374151; /* Dark gray for text */
 }
 
 .summary-table th, .items-table th {
-  background-color: #f5f5f5;
+  background-color: #dbeafe; /* Light blue for headers */
   font-weight: bold;
-  color: #444;
+  color: #1e3a8a; /* Dark blue for text */
 }
 
 .summary-table {
-  background-color: #e8f5e9; /* Cream green */
+  background-color: #f0fdf4; /* Very light green for summary table */
 }
 
 .summary-table tbody tr {
-  background-color: #f1f8f2; /* Slightly darker cream green for the row */
+  background-color: #f3f4f6; /* Light gray for rows to keep it subtle */
 }
 
 .items-table {
-  background-color: #e3f2fd; /* Cream blue */
+  background-color: #eff6ff; /* Very light blue for items table */
 }
 
 .items-table th, .items-table td {
@@ -114,9 +116,9 @@ tr:hover:not(.details-row) {
 }
 
 .items-table tbody tr:nth-child(even) {
-  background-color: #edf6fd; /* Slightly darker cream blue for alternate rows */
+  background-color: #f3f4f6; /* Light gray for alternate rows */
 }
 
 .items-table tbody tr:hover {
-  background-color: #d6e9f8;
+  background-color: #dbeafe; /* Light blue for hover */
 }
