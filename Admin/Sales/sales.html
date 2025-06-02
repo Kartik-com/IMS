@@ -7,45 +7,61 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="sales.css">
 </head>
-<body class="bg-gray-100">
-  <div class="container mx-auto p-8">
-    <h1 class="text-3xl font-semibold text-blue-900 mb-8 text-center">Sales Overview</h1>
-    
-    <!-- Time Span Dropdown -->
-    <div class="mb-8 flex justify-center">
-      <select id="timeSpan" class="p-3 rounded-md bg-white text-blue-900 text-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
-        <option value="daily">Daily</option>
-        <option value="weekly">Weekly</option>
-        <option value="15days">15 Days</option>
-        <option value="monthly">Monthly</option>
-        <option value="yearly">Yearly</option>
-      </select>
+<body class="bg-white">
+  <div class="container mx-auto p-4 md:p-6">
+    <!-- Header -->
+    <header class="mb-6 text-center">
+      <h1 class="text-2xl md:text-3xl font-extrabold text-blue-900">Sales Dashboard</h1>
+      <p class="text-base text-gray-600 mt-2">Monitor your business performance effortlessly</p>
+    </header>
+
+    <!-- Time Span Selector -->
+    <div class="flex flex-col md:flex-row justify-center items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
+      <div class="bg-gray-50 p-3 rounded-lg border border-blue-200 shadow-sm w-full max-w-xs">
+        <label for="timeSpan" class="block text-xs font-semibold text-blue-800 mb-1">Select Time Period</label>
+        <select id="timeSpan" class="p-2 rounded-md bg-white text-blue-800 text-base border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+          <option value="daily">Last 7 Days</option>
+          <option value="15days">Last 15 Days</option>
+          <option value="weekly">Last 4 Weeks</option>
+          <option value="monthly">Last 12 Months</option>
+          <option value="yearly">Last 6 Years</option>
+        </select>
+      </div>
+      <div class="bg-gray-50 p-3 rounded-lg border border-green-200 shadow-sm w-full max-w-sm">
+        <label class="block text-xs font-semibold text-green-800 mb-1">Custom Date Range</label>
+        <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+          <input type="date" id="customStartDate" class="p-2 rounded-md bg-white text-blue-800 text-base border border-green-300 focus:outline-none focus:ring-2 focus:ring-green-500 w-full sm:w-28">
+          <span class="text-gray-600 text-base">to</span>
+          <input type="date" id="customEndDate" class="p-2 rounded-md bg-white text-blue-800 text-base border border-green-300 focus:outline-none focus:ring-2 focus:ring-green-500 w-full sm:w-28">
+          <button id="applyCustomRange" class="p-2 rounded-md bg-green-600 text-white text-base font-bold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 shadow-sm w-full sm:w-16">Apply</button>
+        </div>
+      </div>
     </div>
-    
-    <!-- Sales Graph -->
-    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-      <div id="loading" class="text-center text-blue-900">Loading...</div>
-      <div id="noData" class="hidden text-center text-blue-900">No sales data available</div>
-      <canvas id="salesChart" class="w-full h-80 hidden"></canvas>
+
+    <!-- Graph Section -->
+    <div class="bg-white p-4 rounded-lg shadow-md mb-6 border border-gray-200">
+      <div id="loading" class="text-center text-gray-600 text-base">Loading your sales data...</div>
+      <div id="noData" class="hidden text-center text-gray-600 text-base">No sales data available for this period</div>
+      <canvas id="salesChart" class="w-full h-64"></canvas>
     </div>
-    
+
     <!-- Metric Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="bg-white p-6 rounded-lg shadow-md text-center">
-        <h2 class="text-lg font-medium text-blue-900">Total Sales</h2>
-        <p id="totalSales" class="text-2xl font-semibold text-green-700">₹0.00</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-blue-50 p-4 rounded-lg shadow-md text-center border-2 border-black hover:shadow-lg transition-shadow">
+        <h2 class="text-base font-semibold text-blue-800">Total Sales</h2>
+        <p id="totalSales" class="text-xl font-bold text-green-700 mt-2">₹0.00</p>
       </div>
-      <div class="bg-white p-6 rounded-lg shadow-md text-center">
-        <h2 class="text-lg font-medium text-blue-900">Gross Profit</h2>
-        <p id="totalProfit" class="text-2xl font-semibold text-green-700">₹0.00</p>
+      <div class="bg-green-50 p-4 rounded-lg shadow-md text-center border-2 border-black hover:shadow-lg transition-shadow">
+        <h2 class="text-base font-semibold text-blue-800">Gross Profit</h2>
+        <p id="totalProfit" class="text-xl font-bold text-green-700 mt-2">₹0.00</p>
       </div>
-      <div class="bg-white p-6 rounded-lg shadow-md text-center">
-        <h2 class="text-lg font-medium text-blue-900">GST Collected</h2>
-        <p id="totalGST" class="text-2xl font-semibold text-green-700">₹0.00</p>
+      <div class="bg-yellow-50 p-4 rounded-lg shadow-md text-center border-2 border-black hover:shadow-lg transition-shadow">
+        <h2 class="text-base font-semibold text-blue-800">GST Collected</h2>
+        <p id="totalGST" class="text-xl font-bold text-green-700 mt-2">₹0.00</p>
       </div>
-      <div class="bg-white p-6 rounded-lg shadow-md text-center">
-        <h2 class="text-lg font-medium text-blue-900">Discounts Given</h2>
-        <p id="totalDiscounts" class="text-2xl font-semibold text-green-700">₹0.00</p>
+      <div class="bg-purple-50 p-4 rounded-lg shadow-md text-center border-2 border-black hover:shadow-lg transition-shadow">
+        <h2 class="text-base font-semibold text-blue-800">Discounts Given</h2>
+        <p id="totalDiscounts" class="text-xl font-bold text-green-700 mt-2">₹0.00</p>
       </div>
     </div>
   </div>
