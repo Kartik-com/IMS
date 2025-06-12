@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Status</title>
+    <link rel="stylesheet" href="stockStatus.css">
+</head>
+<body>
+    <div class="container">
+        <h2 class="header">Stock Status</h2>
+        <div class="row">
+            <div class="column">
+                <div class="card">
+                    <div class="card-header available">Available Stock</div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="stock-table">
+                                <thead>
+                                    <tr>
+                                        <th>Barcode</th>
+                                        <th>Name</th>
+                                        <th>Stock</th>
+                                        <th>Unit</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="availableStockBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="card">
+                    <div class="card-header low">Low Stock</div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="stock-table">
+                                <thead>
+                                    <tr>
+                                        <th>Barcode</th>
+                                        <th>Name</th>
+                                        <th>Stock</th>
+                                        <th>Unit</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lowStockBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="card">
+                    <div class="card-header out">Out of Stock</div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="stock-table">
+                                <thead>
+                                    <tr>
+                                        <th>Barcode</th>
+                                        <th>Name</th>
+                                        <th>Stock</th>
+                                        <th>Unit</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="outOfStockBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="stockStatus.js"></script>
+</body>
+</html>
