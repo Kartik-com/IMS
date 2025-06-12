@@ -33,6 +33,12 @@ function createWindow() {
           },
         },
         {
+          label: 'LowStock',
+          click: () => {
+            mainWindow.loadFile('./Inventory/Low stock - Out of stock/stockStatus.html');
+          },
+        },
+        {
           label: 'Inventory Management',
           click: () => {
             mainWindow.loadFile('./Inventory/InventoryList/inventory.html');
