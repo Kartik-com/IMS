@@ -1,0 +1,100 @@
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+}
+h1 {
+  text-align: center;
+}
+form {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+input[type="text"],
+input[type="number"],
+input[type="date"] {
+  padding: 8px;
+  margin: 5px;
+  flex: 1 1 200px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+#stock-display, #edit-stock-display {
+  margin: 5px;
+  padding: 8px;
+  flex: 1 1 200px;
+  color: #555;
+  font-style: italic;
+}
+button {
+  padding: 8px 16px;
+  margin: 5px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #45a049;
+}
+.cancel {
+  background-color: #f44336;
+}
+.cancel:hover {
+  background-color: #d32f2f;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+th {
+  background-color: #f2f2f2;
+}
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+#search {
+  width: 100%;
+  max-width: 300px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+/* Modal Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.close {
+  float: right;
+  font-size: 24px;
+  cursor: pointer;
+  color: #333;
+}
+.close:hover {
+  color: #f44336;
+}
