@@ -211,8 +211,30 @@ db.prepare(
   )
 `
 ).run();
-
-
+// Create expired_items table
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS expired_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    expiration_date TEXT NOT NULL,
+    reason TEXT,
+    createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES items(id)
+  )
+`).run();
+// Migration: Add expiration_date column to expired_items if not exists
+try {
+  const columns = db.prepare("PRAGMA table_info(expired_items)").all();
+  const hasExpiryDate = columns.some(col => col.name === "expiration_date");
+  if (!hasExpiryDate) {
+    db.prepare("ALTER TABLE expired_items ADD COLUMN expiration_date TEXT NOT NULL DEFAULT '1970-01-01'").run();
+    console.log("Added expiration_date column to expired_items table");
+  }
+} catch (err) {
+  console.error("Error during expired_items migration:", err);
+  throw err;
+}
 // GET customers
 ipcMain.handle("customers:getCustomers", () => {
   try {
@@ -285,7 +307,22 @@ ipcMain.handle("customers:checkMobileNumber", (event, mobile_number) => {
     throw new Error("Failed to check mobile number");
   }
 });
-
+// GET item by name or barcode for autofill
+ipcMain.handle("items:getItemByNameOrBarcode", (event, query) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT id, name, barcode, stock
+      FROM items
+      WHERE name = ? OR barcode = ?
+      LIMIT 1
+    `);
+    const item = stmt.get(query, query);
+    return item || null;
+  } catch (err) {
+    console.error("Error fetching item by name or barcode:", err);
+    throw new Error("Failed to fetch item");
+  }
+});
 // GET items
 ipcMain.handle("inventory:getItems", () => {
   try {
@@ -1312,5 +1349,191 @@ ipcMain.handle("inventory:getItemByBarcode", (event, barcode) => {
       barcode: barcode,
     });
     throw new Error(`Failed to fetch item by barcode: ${err.message}`);
+  }
+});
+
+
+// GET all expired items
+ipcMain.handle("expiredItems:getExpiredItems", () => {
+  try {
+    const stmt = db.prepare(`
+      SELECT ei.id, ei.item_id, ei.quantity, ei.expiration_date, ei.reason, ei.createdAt,
+             i.name AS item_name, i.barcode AS item_barcode
+      FROM expired_items ei
+      JOIN items i ON ei.item_id = i.id
+      ORDER BY ei.createdAt DESC
+    `);
+    return stmt.all();
+  } catch (err) {
+    console.error("Error fetching expired items:", err);
+    throw new Error("Failed to fetch expired items");
+  }
+});
+
+// ADD expired item
+ipcMain.handle("expiredItems:addExpiredItem", (event, expiredItem) => {
+  const getItemStmt = db.prepare("SELECT id, stock FROM items WHERE barcode = ?");
+  const insertExpiredItemStmt = db.prepare(`
+    INSERT INTO expired_items (item_id, quantity, expiration_date, reason, createdAt)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  const updateStockStmt = db.prepare("UPDATE items SET stock = stock - ? WHERE id = ?");
+  
+  const transaction = db.transaction((data) => {
+    if (!data.barcode || !data.quantity || !data.expiration_date || !data.createdAt) {
+      throw new Error("All required fields (barcode, quantity, expiration_date, createdAt) must be provided");
+    }
+    if (data.quantity <= 0) {
+      throw new Error("Quantity must be positive");
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.expiration_date)) {
+      throw new Error("Invalid expiry date format, expected YYYY-MM-DD");
+    }
+    const item = getItemStmt.get(data.barcode);
+    if (!item) {
+      throw new Error(`Item with barcode ${data.barcode} not found`);
+    }
+    if (item.stock < data.quantity) {
+      throw new Error(`Insufficient stock for item ${data.barcode}. Available: ${item.stock}, requested: ${data.quantity}`);
+    }
+    const expiredItemId = insertExpiredItemStmt.run(
+      item.id,
+      data.quantity,
+      data.expiration_date,
+      data.reason || null,
+      data.createdAt
+    ).lastInsertRowid;
+    updateStockStmt.run(data.quantity, item.id);
+    return expiredItemId;
+  });
+
+  try {
+    const expiredItemId = transaction(expiredItem);
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send("expiredItems:newExpiredItem", {
+        id: expiredItemId,
+        item_id: getItemStmt.get(expiredItem.barcode).id,
+        quantity: expiredItem.quantity,
+        expiration_date: expiredItem.expiration_date,
+        reason: expiredItem.reason || "N/A",
+        createdAt: expiredItem.createdAt,
+        item_name: expiredItem.item_name,
+        item_barcode: expiredItem.barcode
+      });
+    });
+    return { success: true, expiredItemId };
+  } catch (err) {
+    console.error("Add expired item transaction failed:", err.message, err.stack);
+    return { success: false, error: err.message };
+  }
+});
+
+// UPDATE expired item
+ipcMain.handle("expiredItems:updateExpiredItem", (event, expiredItem) => {
+  const getItemStmt = db.prepare("SELECT id FROM items WHERE barcode = ?");
+  const getExpiredItemStmt = db.prepare("SELECT item_id, quantity FROM expired_items WHERE id = ?");
+  const updateExpiredItemStmt = db.prepare(`
+    UPDATE expired_items
+    SET item_id = ?, quantity = ?, expiration_date = ?, reason = ?
+    WHERE id = ?
+  `);
+  const updateStockStmt = db.prepare("UPDATE items SET stock = stock + ? WHERE id = ?");
+
+  const transaction = db.transaction((data) => {
+    if (!data.id || !data.barcode || !data.quantity || !data.expiration_date) {
+      throw new Error("All required fields (id, barcode, quantity, expiration_date) must be provided");
+    }
+    if (data.quantity <= 0) {
+      throw new Error("Quantity must be positive");
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.expiration_date)) {
+      throw new Error("Invalid expiry date format, expected YYYY-MM-DD");
+    }
+    const item = getItemStmt.get(data.barcode);
+    if (!item) {
+      throw new Error(`Item with barcode ${data.barcode} not found`);
+    }
+    const currentExpiredItem = getExpiredItemStmt.get(data.id);
+    if (!currentExpiredItem) {
+      throw new Error("Expired item not found");
+    }
+    const stockAdjustment = currentExpiredItem.quantity - data.quantity; // Corrected: oldQuantity - newQuantity
+    const currentStock = db.prepare("SELECT stock FROM items WHERE id = ?").get(item.id).stock;
+    if (stockAdjustment < 0 && currentStock < Math.abs(stockAdjustment)) {
+      throw new Error(`Insufficient stock for item ${data.barcode}. Available: ${currentStock}, requested: ${Math.abs(stockAdjustment)}`);
+    }
+    updateExpiredItemStmt.run(
+      item.id,
+      data.quantity,
+      data.expiration_date,
+      data.reason || null,
+      data.id
+    );
+    updateStockStmt.run(stockAdjustment, item.id);
+  });
+
+  try {
+    transaction(expiredItem);
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send("expiredItems:updatedExpiredItem", {
+        id: expiredItem.id,
+        item_id: getItemStmt.get(expiredItem.barcode).id,
+        quantity: expiredItem.quantity,
+        expiration_date: expiredItem.expiration_date,
+        reason: expiredItem.reason || "N/A",
+        item_name: expiredItem.item_name,
+        item_barcode: expiredItem.barcode
+      });
+    });
+    return { success: true };
+  } catch (err) {
+    console.error("Update expired item transaction failed:", err.message, err.stack);
+    return { success: false, error: err.message };
+  }
+});
+
+// DELETE expired item
+ipcMain.handle("expiredItems:deleteExpiredItem", (event, id) => {
+  const getExpiredItemStmt = db.prepare("SELECT item_id, quantity FROM expired_items WHERE id = ?");
+  const deleteExpiredItemStmt = db.prepare("DELETE FROM expired_items WHERE id = ?");
+  const updateStockStmt = db.prepare("UPDATE items SET stock = stock + ? WHERE id = ?");
+
+  const transaction = db.transaction((id) => {
+    const expiredItem = getExpiredItemStmt.get(id);
+    if (!expiredItem) {
+      throw new Error("Expired item not found");
+    }
+    deleteExpiredItemStmt.run(id);
+    updateStockStmt.run(expiredItem.quantity, expiredItem.item_id);
+  });
+
+  try {
+    transaction(id);
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send("expiredItems:deletedExpiredItem", { id });
+    });
+    return { success: true };
+  } catch (err) {
+    console.error("Delete expired item transaction failed:", err.message, err.stack);
+    return { success: false, error: err.message };
+  }
+});
+
+// SEARCH expired items
+ipcMain.handle("expiredItems:searchExpiredItems", (event, searchTerm) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT ei.id, ei.item_id, ei.quantity, ei.expiration_date, ei.reason, ei.createdAt,
+             i.name AS item_name, i.barcode AS item_barcode
+      FROM expired_items ei
+      JOIN items i ON ei.item_id = i.id
+      WHERE i.name LIKE '%' || ? || '%' OR i.barcode LIKE '%' || ? || '%'
+      ORDER BY ei.createdAt DESC
+      LIMIT 10
+    `);
+    return stmt.all(searchTerm, searchTerm);
+  } catch (err) {
+    console.error("Error searching expired items:", err);
+    throw new Error("Failed to search expired items");
   }
 });

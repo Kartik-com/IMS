@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Expired Items</title>
+  <link rel="stylesheet" href="expiredItems.css">
+</head>
+<body>
+  <h1>Expired Items</h1>
+  <form id="add-expired-item-form">
+    <input type="text" id="barcode" placeholder="Barcode" required>
+    <input type="text" id="item_name" placeholder="Item Name" required>
+    <span id="stock-display">Available Stock: N/A</span>
+    <input type="number" id="quantity" placeholder="Quantity" min="1" required>
+    <input type="date" id="expiration_date" placeholder="Expiration Date" required>
+    <input type="text" id="reason" placeholder="Reason (optional)">
+    <input type="hidden" id="createdAt">
+    <button type="submit">Add Expired Item</button>
+  </form>
+  <input type="text" id="search" placeholder="Search by name or barcode">
+  <table>
+    <thead>
+      <tr>
+        <th>Item Name</th>
+        <th>Barcode</th>
+        <th>Quantity</th>
+        <th>Expiration Date</th>
+        <th>Reason</th>
+        <th>Created At</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="expired-items-table-body"></tbody>
+  </table>
+
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Edit Expired Item</h2>
+      <form id="edit-expired-item-form">
+        <input type="hidden" id="edit-id">
+        <input type="text" id="edit-barcode" placeholder="Barcode" required>
+        <input type="text" id="edit-item_name" placeholder="Item Name" required>
+        <span id="edit-stock-display">Available Stock: N/A</span>
+        <input type="number" id="edit-quantity" placeholder="Quantity" min="1" required>
+        <input type="date" id="edit-expiration_date" placeholder="Expiration Date" required>
+        <input type="text" id="edit-reason" placeholder="Reason (optional)">
+        <input type="hidden" id="edit-createdAt">
+        <button type="submit">Update Expired Item</button>
+        <button type="button" class="cancel">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="expiredItems.js"></script>
+</body>
+</html>

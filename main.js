@@ -68,6 +68,12 @@ function createWindow() {
             mainWindow.loadFile('./Inventory/wholesalersHistory/wholesalersHistory.html');
           },
         },
+         {
+          label: 'Expired Items',
+          click: () => {
+            mainWindow.loadFile('./Inventory/expiredItems/expiredItems.html');
+          },
+        },
         { type: 'separator' },
         {
           label: 'Exit',
