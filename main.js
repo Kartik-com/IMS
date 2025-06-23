@@ -74,6 +74,12 @@ function createWindow() {
             mainWindow.loadFile('./Inventory/expiredItems/expiredItems.html');
           },
         },
+            {
+          label: 'customer-suggestions',
+          click: () => {
+            mainWindow.loadFile('./Billing/customer-suggestions/customer-suggestions.html');
+          },
+        },
         { type: 'separator' },
         {
           label: 'Exit',
