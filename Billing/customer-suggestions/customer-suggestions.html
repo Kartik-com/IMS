@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Suggestions</title>
+    <link rel="stylesheet" href="customer-suggestions.css">
+</head>
+<body>
+    <h1>Customer Suggestions</h1>
+    <div class="input-container">
+        <input type="text" id="customerName" placeholder="Enter Customer Name" style="width: 250px;" oninput="autocompleteCustomer()">
+        <div id="nameSuggestionDropdown" class="dropdown"></div>
+        <input type="text" id="customerMobile" placeholder="Enter Mobile Number" style="width: 200px;" oninput="validateMobile(event); autocompleteCustomer()">
+        <div id="mobileSuggestionDropdown" class="dropdown"></div>
+        <input type="text" id="suggestion" placeholder="Enter Suggestion" style="width: 300px;">
+        <input type="date" id="createdAt" value="2025-06-23">
+        <button onclick="addSuggestion()">Add Suggestion</button>
+    </div>
+    <input type="text" id="searchSuggestions" placeholder="Search by customer name or suggestion" style="width: 400px; margin-top: 20px;" onkeyup="searchSuggestions()">
+    <div id="searchSuggestionDropdown" class="dropdown"></div>
+    <table id="suggestionsTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Customer Name</th>
+                <th>Customer Mobile</th>
+                <th>Suggestion</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="suggestionsBody"></tbody>
+    </table>
+    <script src="customer-suggestions.js"></script>
+</body>
+</html>

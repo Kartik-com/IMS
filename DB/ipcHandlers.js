@@ -223,6 +223,18 @@ db.prepare(`
     FOREIGN KEY (item_id) REFERENCES items(id)
   )
 `).run();
+
+// Create customer_suggestions table
+db.prepare(
+    "CREATE TABLE IF NOT EXISTS customer_suggestions (" +
+    "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+    "customer_id INTEGER NOT NULL," +
+    "suggestion TEXT NOT NULL," +
+    "createdAt TEXT DEFAULT CURRENT_TIMESTAMP," +
+    "FOREIGN KEY (customer_id) REFERENCES customers(id)" +
+    ")"
+).run();
+
 // Migration: Add expiration_date column to expired_items if not exists
 try {
   const columns = db.prepare("PRAGMA table_info(expired_items)").all();
@@ -1536,4 +1548,128 @@ ipcMain.handle("expiredItems:searchExpiredItems", (event, searchTerm) => {
     console.error("Error searching expired items:", err);
     throw new Error("Failed to search expired items");
   }
+});
+
+// GET customer suggestions
+ipcMain.handle("customerSuggestions:getSuggestions", () => {
+    try {
+        const stmt = db.prepare(
+            "SELECT cs.id, cs.customer_id, cs.suggestion, cs.createdAt, c.name AS customer_name, c.mobile_number AS customer_mobile " +
+            "FROM customer_suggestions cs " +
+            "JOIN customers c ON cs.customer_id = c.id " +
+            "ORDER BY cs.id DESC" // Changed to ORDER BY id DESC for descending order
+        );
+        return stmt.all();
+    } catch (err) {
+        console.error("Error fetching customer suggestions:", err);
+        throw new Error("Failed to fetch customer suggestions");
+    }
+});
+
+// ADD customer suggestion with new customer handling
+ipcMain.handle("customerSuggestions:addSuggestion", (event, suggestionData) => {
+    const insertCustomerStmt = db.prepare(
+        "INSERT INTO customers (name, mobile_number, udhari) VALUES (?, ?, 0.0)"
+    );
+    const insertSuggestionStmt = db.prepare(
+        "INSERT INTO customer_suggestions (customer_id, suggestion, createdAt) VALUES (?, ?, ?)"
+    );
+    const checkCustomerStmt = db.prepare("SELECT id FROM customers WHERE mobile_number = ?");
+    const transaction = db.transaction((data) => {
+        let customerId;
+        const existingCustomer = checkCustomerStmt.get(data.mobile_number);
+        if (existingCustomer) {
+            customerId = existingCustomer.id;
+        } else {
+            if (!data.name || !data.mobile_number) {
+                throw new Error("Name and mobile number are required for new customers");
+            }
+            if (!/^\d+$/.test(data.mobile_number)) {
+                throw new Error("Mobile number must contain only digits");
+            }
+            const result = insertCustomerStmt.run(data.name, data.mobile_number);
+            customerId = result.lastInsertRowid;
+        }
+        if (!data.suggestion || !data.createdAt) {
+            throw new Error("Suggestion and createdAt are required");
+        }
+        return insertSuggestionStmt.run(customerId, data.suggestion, data.createdAt);
+    });
+    try {
+        const result = transaction(suggestionData);
+        const suggestionId = result.lastInsertRowid;
+        const customer = suggestionData.customer_id ? 
+            db.prepare("SELECT name, mobile_number FROM customers WHERE id = ?").get(suggestionData.customer_id) :
+            { name: suggestionData.name, mobile_number: suggestionData.mobile_number };
+        BrowserWindow.getAllWindows().forEach((win) => {
+            win.webContents.send("customerSuggestions:newSuggestion", {
+                id: suggestionId,
+                customer_id: suggestionData.customer_id || suggestionId,
+                suggestion: suggestionData.suggestion,
+                createdAt: suggestionData.createdAt,
+                customer_name: customer.name,
+                customer_mobile: customer.mobile_number
+            });
+        });
+        return { success: true, suggestionId };
+    } catch (err) {
+        console.error("Add customer suggestion transaction failed:", err.message, err.stack);
+        return { success: false, error: err.message };
+    }
+});
+
+// GET customer for autofill (support multiple matches)
+ipcMain.handle("customerSuggestions:getCustomerByNameOrMobile", (event, query, multiple = false) => {
+    try {
+        const stmt = db.prepare(
+            "SELECT id, name, mobile_number FROM customers WHERE name LIKE ? OR mobile_number LIKE ?"
+        );
+        const customers = stmt.all(`%${query}%`, `%${query}%`);
+        return multiple ? customers : (customers.length > 0 ? customers[0] : null);
+    } catch (err) {
+        console.error("Error fetching customer for autofill:", err);
+        throw new Error("Failed to fetch customer");
+    }
+});
+
+// UPDATE customer suggestion
+ipcMain.handle("customerSuggestions:updateSuggestion", (event, { id, suggestion }) => {
+    try {
+        const stmt = db.prepare(
+            "UPDATE customer_suggestions SET suggestion = ? WHERE id = ?"
+        );
+        const result = stmt.run(suggestion, id);
+        if (result.changes === 0) {
+            throw new Error("Suggestion not found or no changes made");
+        }
+        const updatedSuggestion = db.prepare(
+            "SELECT cs.id, cs.customer_id, cs.suggestion, cs.createdAt, c.name AS customer_name, c.mobile_number AS customer_mobile " +
+            "FROM customer_suggestions cs JOIN customers c ON cs.customer_id = c.id WHERE cs.id = ?"
+        ).get(id);
+        BrowserWindow.getAllWindows().forEach((win) => {
+            win.webContents.send("customerSuggestions:updatedSuggestion", updatedSuggestion);
+        });
+        return { success: true, updatedSuggestion };
+    } catch (err) {
+        console.error("Error updating suggestion:", err);
+        return { success: false, error: err.message };
+    }
+});
+
+// DELETE customer suggestion
+ipcMain.handle("customerSuggestions:deleteSuggestion", (event, id) => {
+    try {
+        const stmt = db.prepare("DELETE FROM customer_suggestions WHERE id = ?");
+        const result = stmt.run(id);
+        if (result.changes === 0) {
+            throw new Error("Suggestion not found");
+        }
+        BrowserWindow.getAllWindows().forEach((win) => {
+            win.webContents.send("customerSuggestions:deletedSuggestion", id);
+        });
+        return { success: true };
+    } catch (err) {
+        console.error("Error deleting suggestion:", err);
+        return { success: false, error: err.message };
+    }
 });
