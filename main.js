@@ -74,10 +74,16 @@ function createWindow() {
             mainWindow.loadFile('./Inventory/expiredItems/expiredItems.html');
           },
         },
-            {
+          {
           label: 'customer-suggestions',
           click: () => {
             mainWindow.loadFile('./Billing/customer-suggestions/customer-suggestions.html');
+          },
+        },
+          {
+          label: 'ChatBot',
+          click: () => {
+            mainWindow.loadFile('./Admin/Chatbot/chatbot.html');
           },
         },
         { type: 'separator' },
