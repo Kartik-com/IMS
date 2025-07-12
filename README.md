@@ -128,5 +128,6 @@ Join the future of inventory today.
 
 Have questions, feedback, or business inquiries?
 
-📧 Email: [nalekunal343@gmail.com](mailto:nalekunal343@gmail.com)
+📧 Email: [nalekunal343@gmail.com](mailto:nalekunal343@gmail.com) (Kunal)
 📱 Phone: +91 7558403008  (Kartik)
+💬 WhatsApp: +91 8421945129 (Tushar)
