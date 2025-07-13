@@ -82,7 +82,7 @@ From billing to backup, RetailAI handles it all. What makes us different? **AI-b
 
 ## 🛠️ Installation
 
-RetailAI is **easy to install, understand, and use**. Ideal for both non-tech users and developers. (Free for few months only for starting users. Refer and earn more months)
+RetailAI is **easy to install, understand, and use**. Ideal for both non-tech users and developers. (Free for a limited number of early users. Refer others and earn additional free months!)
 
 > *Setup guide will be added soon.*
 
