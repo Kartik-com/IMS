@@ -86,6 +86,12 @@ function createWindow() {
             mainWindow.loadFile('./Admin/Chatbot/chatbot.html');
           },
         },
+          {
+          label: 'Backup',
+          click: () => {
+            mainWindow.loadFile('./Admin/Backup/backup.html');
+          },
+        },
         { type: 'separator' },
         {
           label: 'Exit',

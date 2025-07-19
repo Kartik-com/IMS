@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backup & Restore</title>
+  <link rel="stylesheet" href="backup.css">
+  <style>
+    .button-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start; /* changed from flex-end to align buttons at top */
+      margin-top: 10px;
+      margin-bottom: 5px;
+    }
+
+    .btn-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .coming-soon {
+      color: #aaa;
+      font-size: 0.9em;
+      margin-top: 4px;
+    }
+
+    #downloadBtn {
+      margin-top: 4px; /* slightly adjust height to align visually */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Backup & Restore Shop Data</h1>
+    <div class="backup-section">
+      <h2>Backup to Google Drive</h2>
+      <button id="backupBtn" class="btn">Backup Now</button>
+      <p id="backupStatus" class="status"></p>
+    </div>
+    <div class="restore-section">
+      <h2>Restore or Download from Google Drive</h2>
+      <select id="backupFiles" class="select">
+        <option value="">Select a backup file</option>
+      </select>
+      <div class="button-row">
+        <div class="btn-wrapper">
+          <button id="restoreBtn" class="btn" disabled>Restore</button>
+          <p class="coming-soon">(Coming Soon)</p>
+        </div>
+        <button id="downloadBtn" class="btn" disabled>Download</button>
+      </div>
+      <p id="restoreStatus" class="status"></p>
+    </div>
+  </div>
+  <script src="backup.js"></script>
+</body>
+</html>

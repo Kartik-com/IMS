@@ -28,6 +28,12 @@
     "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0"
+    "adm-zip": "^0.5.16",
+    "archiver": "^7.0.1",
+    "axios": "^1.10.0",
+    "better-sqlite3": "^11.10.0",
+    "fs-extra": "^11.3.0",
+    "googleapis": "^152.0.0",
+    "sqlite3": "^5.1.7"
   }
 }
