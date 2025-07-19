@@ -26,3 +26,5 @@ ehthumbs.db
 dist/
 build/
 *.egg-info/
+
+.env
