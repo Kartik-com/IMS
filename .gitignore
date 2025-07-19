@@ -27,4 +27,6 @@ dist/
 build/
 *.egg-info/
 
+
 .env
+**/tokens.json
